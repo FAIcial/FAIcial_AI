@@ -47,3 +47,32 @@ source venv/bin/activate  # 또는 venv\Scripts\activate (Windows)
 # 의존성 설치
 pip install -r requirements.txt
 ```
+
+---
+
+### ✅ 주요 작업 세부 내용
+
+- Flask 서버 실행 방법 정리
+
+  - `python app.py` 또는 `flask run` 명령어 사용법 안내
+  - `FLASK_APP=app.py` 환경 변수 설정 방법 포함
+  - 기본 실행 주소(`http://127.0.0.1:5000`) 명시
+
+- API 요청/응답 형식 예시 포함 (`POST /analyze`)
+
+  - 이미지 파일 업로드 방식 (`multipart/form-data`) 설명
+  - 요청 파라미터 명: `image`
+  - 응답 JSON 예시 제공
+    - 전체 대칭률 (`symmetry_score`)
+    - 부위별 대칭률 (`part_symmetries`)
+    - base64 인코딩 이미지 (`image_base64`)
+
+- 주요 라이브러리 및 활용 목적 표 정리  
+  | 라이브러리 | 설명 |
+  |----------------|------|
+  | `flask` | API 서버 구축을 위한 경량 웹 프레임워크 |
+  | `opencv-python`| 이미지 전처리 및 OpenCV 기반 처리 |
+  | `mediapipe` | 얼굴 랜드마크 검출 (Google FaceMesh) |
+  | `matplotlib` | 분석 결과 시각화 이미지 생성 |
+  | `numpy` | 수치 계산 및 대칭 분석 지원 |
+  | `Pillow` | 이미지 파일 처리 및 base64 변환 |
