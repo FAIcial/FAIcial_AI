@@ -1,0 +1,17 @@
+2025-05-05 08:30:06 [INFO] FAIcial - Flask 앱 실행 시작
+2025-05-05 08:30:07 [INFO] FAIcial - Flask 앱 실행 시작
+2025-05-05 08:30:18 [INFO] FAIcial - 분석 요청 수신됨
+2025-05-05 08:30:18 [DEBUG] FAIcial - 얼굴 랜드마크 추출 시도
+2025-05-05 08:30:18 [DEBUG] FAIcial - 이미지 바이트 수신 및 디코딩 시도
+2025-05-05 08:30:18 [ERROR] FAIcial - 이미지 디코딩 실패: 유효하지 않은 이미지
+2025-05-05 08:30:18 [ERROR] FAIcial - 분석 중 예외 발생
+Traceback (most recent call last):
+  File "/Users/kogun/Desktop/FAIcial_AI/app.py", line 26, in analyze
+    landmarks, image = detect_landmarks(image_bytes)
+  File "/Users/kogun/Desktop/FAIcial_AI/analyzer/detect_face.py", line 17, in detect_landmarks
+    raise ValueError("Invalid image data")
+ValueError: Invalid image data
+2025-05-05 08:31:21 [INFO] FAIcial - Flask 앱 실행 시작
+2025-05-05 08:31:23 [INFO] FAIcial - Flask 앱 실행 시작
+2025-05-05 08:31:25 [INFO] FAIcial - Flask 앱 실행 시작
+2025-05-05 08:31:27 [INFO] FAIcial - Flask 앱 실행 시작
