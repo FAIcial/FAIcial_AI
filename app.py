@@ -1,8 +1,7 @@
-cat <<EOF > app.py
 from flask import Flask, request, jsonify
 from analyzer.detect_face import detect_landmarks
 from analyzer.analyze_symmetry import calculate_symmetry
-from analyzer.visualize_result import generate_result_image
+from analyzer.visualize_result import generate_result_image  # 아직 미구현 시 주석처리 가능
 import base64
 import io
 
@@ -25,7 +24,7 @@ def analyze():
         # 2. 대칭률 계산
         score, part_scores = calculate_symmetry(landmarks)
 
-        # 3. 결과 이미지 시각화
+        # 3. 결과 이미지 시각화 (임시로 원본 이미지 반환 가능)
         result_image = generate_result_image(image, landmarks, score, part_scores)
 
         # 4. 이미지 base64 인코딩
@@ -44,4 +43,3 @@ def analyze():
 
 if __name__ == "__main__":
     app.run(debug=True)
-EOF

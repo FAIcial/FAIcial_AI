@@ -1,8 +1,6 @@
-cat <<EOF > requirements.txt
 flask
 opencv-python
 mediapipe
 matplotlib
 numpy
 Pillow
-EOF
