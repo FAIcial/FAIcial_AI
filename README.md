@@ -9,28 +9,33 @@ AI 기반 얼굴 대칭 분석 백엔드 서버입니다.
 ## 📁 디렉토리 구조
 
 ```plaintext
-AI_Part/
+FAIcial_AI/
 │
-├── app.py                       # 🔹 Flask 서버 실행 진입점
-├── requirements.txt             # 🔹 필요한 라이브러리 목록 (pip install 용)
-├── README.md                    # 🔹 간단한 사용 설명 (선택)
-├── CHANGELOG.md                 # 🔹 알고리즘 개선 이력 기록 (1달 1회 주기)
+├── app.py                          # Flask 엔트리 포인트
+├── requirements.txt               # 필요한 의존성 리스트
+├── README.md                      # 프로젝트 실행 및 설명 문서
+├── CHANGELOG.md                   # 변경 이력
+│
+├── logger.py                      # logging 설정 모듈
+├── logs/
+│   └── app_2025-05-05.log         # 로그 파일 (실행 중 자동 생성)
 │
 ├── utils/
-│   ├── image_utils.py           # 📦 이미지 변환, base64 처리 등 유틸 함수
-│   └── face_utils.py            # 📦 얼굴 중심선 계산, 정규화 등 보조 기능
+│   ├── image_utils.py             # 이미지 관련 유틸
+│   └── face_utils.py              # 얼굴 관련 유틸
 │
 ├── analyzer/
-│   ├── __init__.py              # 📦 모듈 인식용
-│   ├── detect_face.py           # 🔍 MediaPipe로 얼굴 인식 및 랜드마크 추출
-│   ├── analyze_symmetry.py      # 📏 좌우 대칭률 계산 함수
-│   └── visualize_result.py      # 🖼️ matplotlib으로 결과 이미지 시각화
+│   ├── __init__.py
+│   ├── detect_face.py             # 얼굴 인식 및 landmark 추출
+│   ├── analyze_symmetry.py        # 얼굴 좌우 대칭 계산
+│   └── visualize_result.py        # 결과 이미지 시각화
 │
-├── test_images/                 # 🧪 테스트용 이미지 폴더
+├── test_images/                   # 테스트용 이미지 폴더
 │   ├── sample1.jpg
-│   └── sample2.png
+│   ├── sample2.png
+│   └── sample3.jpg
 │
-└── outputs/                     # 💾 생성된 분석 결과 이미지 (개발용 캐시)
+└── outputs/                       # 분석 결과 이미지 저장
     ├── result1.png
     └── result2.png
 ```
