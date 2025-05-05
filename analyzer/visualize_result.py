@@ -1,10 +1,25 @@
 from PIL import Image, ImageDraw, ImageFont
 from datetime import datetime
 import os
+import requests
 from logger import logger
 
+# 폰트 다운로드 설정
+FONT_URL = "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Korean/NotoSansKR-Regular.otf"
 FONT_PATH = os.path.join("fonts", "NotoSansKR-Regular.otf")
 
+if not os.path.exists(FONT_PATH):
+    os.makedirs(os.path.dirname(FONT_PATH), exist_ok=True)
+    try:
+        response = requests.get(FONT_URL)
+        response.raise_for_status()
+        with open(FONT_PATH, "wb") as f:
+            f.write(response.content)
+        logger.info("폰트 자동 다운로드 완료")
+    except Exception as e:
+        logger.warning(f"폰트 다운로드 실패: {e}")
+
+# 결과 이미지 생성 함수
 def generate_result_image(image, landmarks, score, part_scores):
     logger.debug("결과 이미지 시각화 시작")
 
@@ -52,7 +67,7 @@ def generate_result_image(image, landmarks, score, part_scores):
 
     return image
 
-
+# 라벨 위치 계산 함수
 def estimate_position(landmarks, indices):
     valid_points = [landmarks[i] for i in indices if i < len(landmarks)]
     if not valid_points:
