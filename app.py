@@ -1,7 +1,8 @@
 from flask import Flask, request, jsonify
 from analyzer.detect_face import detect_landmarks
 from analyzer.analyze_symmetry import calculate_symmetry
-from analyzer.visualize_result import generate_result_image  # 아직 미구현 시 주석처리 가능
+from analyzer.visualize_result import generate_result_image
+from logger import logger
 import base64
 import io
 
@@ -9,28 +10,41 @@ app = Flask(__name__)
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
+    logger.info("분석 요청 수신됨")
+
+    # 1. 이미지 파일 확인
     if "image" not in request.files:
+        logger.warning("요청에 이미지 파일 없음")
         return jsonify({"error": "No image file provided"}), 400
 
     file = request.files["image"]
     image_bytes = file.read()
 
     try:
-        # 1. 얼굴 랜드마크 추출
+        # 2. 얼굴 랜드마크 추출
+        logger.debug("얼굴 랜드마크 추출 시도")
         landmarks, image = detect_landmarks(image_bytes)
         if landmarks is None:
+            logger.warning("얼굴이 감지되지 않음")
             return jsonify({"error": "No face detected"}), 400
 
-        # 2. 대칭률 계산
-        score, part_scores = calculate_symmetry(landmarks)
+        logger.debug(f"랜드마크 수: {len(landmarks)}")
 
-        # 3. 결과 이미지 시각화 (임시로 원본 이미지 반환 가능)
+        # 3. 대칭률 계산
+        logger.debug("대칭률 계산 시작")
+        score, part_scores = calculate_symmetry(landmarks)
+        logger.debug(f"총 대칭률 점수: {score}")
+        logger.debug(f"부위별 대칭률 점수: {part_scores}")
+
+        # 4. 결과 이미지 시각화 (임시로 원본 이미지 반환 가능)
         result_image = generate_result_image(image, landmarks, score, part_scores)
 
-        # 4. 이미지 base64 인코딩
+        # 5. 결과 이미지 base64 인코딩
         buffered = io.BytesIO()
         result_image.save(buffered, format="PNG")
         img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+        logger.info("분석 성공 및 응답 반환")
 
         return jsonify({
             "symmetry_score": score,
@@ -39,7 +53,9 @@ def analyze():
         })
 
     except Exception as e:
+        logger.exception("분석 중 예외 발생")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
+    logger.info("Flask 앱 실행 시작")
     app.run(debug=True)
