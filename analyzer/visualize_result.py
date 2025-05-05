@@ -1,29 +1,27 @@
-from PIL import Image, ImageDraw, ImageFont
-from datetime import datetime
 import os
 import requests
+from datetime import datetime
+from PIL import Image, ImageDraw, ImageFont
 from logger import logger
 
-# 폰트 다운로드 설정
+# 최초 실행 시 자동 폰트 다운로드
 FONT_URL = "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Korean/NotoSansKR-Regular.otf"
 FONT_PATH = os.path.join("fonts", "NotoSansKR-Regular.otf")
 
 if not os.path.exists(FONT_PATH):
     os.makedirs(os.path.dirname(FONT_PATH), exist_ok=True)
-    try:
-        response = requests.get(FONT_URL)
-        response.raise_for_status()
-        with open(FONT_PATH, "wb") as f:
-            f.write(response.content)
-        logger.info("폰트 자동 다운로드 완료")
-    except Exception as e:
-        logger.warning(f"폰트 다운로드 실패: {e}")
+    response = requests.get(FONT_URL)
+    with open(FONT_PATH, "wb") as f:
+        f.write(response.content)
+    logger.info("폰트 다운로드 완료: NotoSansKR-Regular.otf")
 
-# 결과 이미지 생성 함수
 def generate_result_image(image, landmarks, score, part_scores):
     logger.debug("결과 이미지 시각화 시작")
 
-    draw = ImageDraw.Draw(image)
+    # 반드시 RGBA 모드로 변환 (투명도 지원)
+    if image.mode != "RGBA":
+        image = image.convert("RGBA")
+
     width, height = image.size
 
     try:
@@ -34,11 +32,30 @@ def generate_result_image(image, landmarks, score, part_scores):
         font_small = ImageFont.load_default()
         logger.warning("기본 폰트 사용 중 (내부 폰트 로드 실패)")
 
-    # 상단 비대칭률 강조 텍스트
+    # 상단 텍스트 정의
     center_x = width // 2
-    draw.text((center_x, 30), f"당신의 비대칭은", fill="black", anchor="mm", font=font_large)
-    draw.text((center_x, 80), f"{score:.2f}%!!", fill="black", anchor="mm", font=font_large)
-    draw.text((center_x, 140), "완전 완벽해요~! 😎", fill="black", anchor="mm", font=font_small)
+    text1 = "당신의 비대칭은"
+    text2 = f"{score:.2f}%!!"
+    text3 = "완전 완벽해요~! 😎"
+
+    # 반투명 배경 박스를 위한 overlay 생성
+    overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    overlay_draw = ImageDraw.Draw(overlay)
+
+    padding = 20
+    box_width = width - 2 * padding
+    box_height = 130
+    box_coords = [padding, 20, padding + box_width, 20 + box_height]
+    overlay_draw.rectangle(box_coords, fill=(0, 0, 0, 180))  # 반투명 검정
+
+    # 합성
+    image = Image.alpha_composite(image, overlay)
+
+    # 텍스트 렌더링 (draw는 합성된 이미지 기준)
+    draw = ImageDraw.Draw(image)
+    draw.text((center_x, 40), text1, fill="white", anchor="mm", font=font_large)
+    draw.text((center_x, 80), text2, fill="white", anchor="mm", font=font_large)
+    draw.text((center_x, 120), text3, fill="white", anchor="mm", font=font_small)
 
     # 부위별 라벨링
     label_box_size = (100, 30)
@@ -50,7 +67,8 @@ def generate_result_image(image, landmarks, score, part_scores):
     }
 
     for part, (x, y) in part_positions.items():
-        score_text = f"{part}: {part_scores.get(part, 'N/A')}%"
+        part_value = part_scores.get(part, None)
+        score_text = f"{part}: {part_value:.1f}%" if part_value is not None else f"{part}: -"
         draw.rounded_rectangle(
             [x, y, x + label_box_size[0], y + label_box_size[1]],
             fill="white", outline="gray", radius=8
@@ -67,7 +85,6 @@ def generate_result_image(image, landmarks, score, part_scores):
 
     return image
 
-# 라벨 위치 계산 함수
 def estimate_position(landmarks, indices):
     valid_points = [landmarks[i] for i in indices if i < len(landmarks)]
     if not valid_points:

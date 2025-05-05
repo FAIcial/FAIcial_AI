@@ -131,3 +131,46 @@ cv2.error: OpenCV(4.11.0) /Users/xperience/GHA-Actions-OpenCV/_work/opencv-pytho
 2025-05-05 21:44:44 [DEBUG] FAIcial - 결과 이미지 시각화 시작
 2025-05-05 21:44:44 [INFO] FAIcial - 결과 이미지 저장됨: outputs/result_20250505_214444.png
 2025-05-05 21:44:44 [INFO] FAIcial - 분석 성공 및 응답 반환
+2025-05-05 21:59:45 [INFO] FAIcial - 폰트 다운로드 완료: NotoSansKR-Regular.otf
+2025-05-05 21:59:45 [INFO] FAIcial - Flask 앱 실행 시작
+2025-05-05 21:59:46 [INFO] FAIcial - Flask 앱 실행 시작
+2025-05-05 21:59:50 [INFO] FAIcial - 분석 요청 수신됨
+2025-05-05 21:59:50 [DEBUG] FAIcial - 얼굴 랜드마크 추출 시도
+2025-05-05 21:59:50 [DEBUG] FAIcial - 이미지 바이트 수신 및 디코딩 시도
+2025-05-05 21:59:50 [DEBUG] FAIcial - OpenCV 이미지 디코딩 성공
+2025-05-05 21:59:50 [DEBUG] FAIcial - 얼굴 랜드마크 감지 성공
+2025-05-05 21:59:50 [DEBUG] FAIcial - 랜드마크 수: 478
+2025-05-05 21:59:50 [DEBUG] FAIcial - 대칭률 계산 시작
+2025-05-05 21:59:50 [DEBUG] FAIcial - 총 대칭률 점수: 87.4
+2025-05-05 21:59:50 [DEBUG] FAIcial - 부위별 대칭률 점수: {'eyes': np.float64(93.47), 'mouth': np.float64(91.98), 'jaw': np.float64(76.73)}
+2025-05-05 21:59:50 [DEBUG] FAIcial - 결과 이미지 시각화 시작
+2025-05-05 21:59:50 [INFO] FAIcial - 결과 이미지 저장됨: outputs/result_20250505_215950.png
+2025-05-05 21:59:50 [INFO] FAIcial - 분석 성공 및 응답 반환
+2025-05-05 22:01:58 [INFO] FAIcial - Flask 앱 실행 시작
+2025-05-05 22:03:03 [INFO] FAIcial - Flask 앱 실행 시작
+2025-05-05 22:03:04 [INFO] FAIcial - Flask 앱 실행 시작
+2025-05-05 22:03:06 [INFO] FAIcial - 분석 요청 수신됨
+2025-05-05 22:03:06 [DEBUG] FAIcial - 얼굴 랜드마크 추출 시도
+2025-05-05 22:03:06 [DEBUG] FAIcial - 이미지 바이트 수신 및 디코딩 시도
+2025-05-05 22:03:06 [DEBUG] FAIcial - OpenCV 이미지 디코딩 성공
+2025-05-05 22:03:07 [DEBUG] FAIcial - 얼굴 랜드마크 감지 성공
+2025-05-05 22:03:07 [DEBUG] FAIcial - 랜드마크 수: 478
+2025-05-05 22:03:07 [DEBUG] FAIcial - 대칭률 계산 시작
+2025-05-05 22:03:07 [DEBUG] FAIcial - 총 대칭률 점수: 87.4
+2025-05-05 22:03:07 [DEBUG] FAIcial - 부위별 대칭률 점수: {'eyes': np.float64(93.47), 'mouth': np.float64(91.98), 'jaw': np.float64(76.73)}
+2025-05-05 22:03:07 [DEBUG] FAIcial - 결과 이미지 시각화 시작
+2025-05-05 22:03:07 [INFO] FAIcial - 결과 이미지 저장됨: outputs/result_20250505_220307.png
+2025-05-05 22:03:07 [INFO] FAIcial - 분석 성공 및 응답 반환
+2025-05-05 22:06:02 [INFO] FAIcial - Flask 앱 실행 시작
+2025-05-05 22:06:05 [INFO] FAIcial - 분석 요청 수신됨
+2025-05-05 22:06:05 [DEBUG] FAIcial - 얼굴 랜드마크 추출 시도
+2025-05-05 22:06:05 [DEBUG] FAIcial - 이미지 바이트 수신 및 디코딩 시도
+2025-05-05 22:06:05 [DEBUG] FAIcial - OpenCV 이미지 디코딩 성공
+2025-05-05 22:06:05 [DEBUG] FAIcial - 얼굴 랜드마크 감지 성공
+2025-05-05 22:06:05 [DEBUG] FAIcial - 랜드마크 수: 478
+2025-05-05 22:06:05 [DEBUG] FAIcial - 대칭률 계산 시작
+2025-05-05 22:06:05 [DEBUG] FAIcial - 총 대칭률 점수: 87.4
+2025-05-05 22:06:05 [DEBUG] FAIcial - 부위별 대칭률 점수: {'eyes': np.float64(93.47), 'mouth': np.float64(91.98), 'jaw': np.float64(76.73)}
+2025-05-05 22:06:05 [DEBUG] FAIcial - 결과 이미지 시각화 시작
+2025-05-05 22:06:05 [INFO] FAIcial - 결과 이미지 저장됨: outputs/result_20250505_220605.png
+2025-05-05 22:06:05 [INFO] FAIcial - 분석 성공 및 응답 반환
