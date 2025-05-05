@@ -36,7 +36,7 @@ def generate_result_image(image, landmarks, score, part_scores):
     center_x = width // 2
     text1 = "당신의 비대칭은"
     text2 = f"{score:.2f}%!!"
-    text3 = "완전 완벽해요~! 😎"
+    text3 = "완전 완벽해요~!"
 
     # 반투명 배경 박스를 위한 overlay 생성
     overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
@@ -66,7 +66,6 @@ def generate_result_image(image, landmarks, score, part_scores):
         "귀": estimate_position(landmarks, [234, 454]),
     }
 
-    # key 매핑
     key_map = {
         "눈": "eyes",
         "입": "mouth",
@@ -78,11 +77,19 @@ def generate_result_image(image, landmarks, score, part_scores):
         key = key_map.get(part, None)
         part_value = part_scores.get(key, None)
         score_text = f"{part}: {part_value:.1f}%" if part_value is not None else f"{part}: -"
+
+        # 위치 조정: 눈/코 → 왼쪽, 입/귀 → 오른쪽
+        if part in ["눈", "코"]:
+            box_x = 30  # 왼쪽 여백
+        else:
+            box_x = width - label_box_size[0] - 30  # 오른쪽 여백
+
+        box_y = y
         draw.rounded_rectangle(
-            [x, y, x + label_box_size[0], y + label_box_size[1]],
+            [box_x, box_y, box_x + label_box_size[0], box_y + label_box_size[1]],
             fill="white", outline="gray", radius=8
         )
-        draw.text((x + 5, y + 5), score_text, fill="black", font=font_small)
+        draw.text((box_x + 5, box_y + 5), score_text, fill="black", font=font_small)
 
     # 이미지 저장
     output_dir = "outputs"
