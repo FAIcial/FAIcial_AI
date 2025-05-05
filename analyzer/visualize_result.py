@@ -4,7 +4,7 @@ from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 from logger import logger
 
-# 최초 실행 시 자동 폰트 다운로드
+# 폰트 경로 설정
 FONT_URL = "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Korean/NotoSansKR-Regular.otf"
 FONT_PATH = os.path.join("fonts", "NotoSansKR-Regular.otf")
 
@@ -18,7 +18,6 @@ if not os.path.exists(FONT_PATH):
 def generate_result_image(image, landmarks, score, part_scores):
     logger.debug("결과 이미지 시각화 시작")
 
-    # 반드시 RGBA 모드로 변환 (투명도 지원)
     if image.mode != "RGBA":
         image = image.convert("RGBA")
 
@@ -32,33 +31,34 @@ def generate_result_image(image, landmarks, score, part_scores):
         font_small = ImageFont.load_default()
         logger.warning("기본 폰트 사용 중 (내부 폰트 로드 실패)")
 
-    # 상단 텍스트 정의
     center_x = width // 2
     text1 = "당신의 비대칭은"
     text2 = f"{score:.2f}%!!"
     text3 = "완전 완벽해요~!"
 
-    # 반투명 배경 박스를 위한 overlay 생성
+    # 상단 박스
     overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
     overlay_draw = ImageDraw.Draw(overlay)
-
     padding = 20
-    box_width = width - 2 * padding
-    box_height = 130
-    box_coords = [padding, 20, padding + box_width, 20 + box_height]
-    overlay_draw.rectangle(box_coords, fill=(0, 0, 0, 180))  # 반투명 검정
-
-    # 합성
+    box_height = 160
+    box_top = 20
+    overlay_draw.rectangle([padding, box_top, width - padding, box_top + box_height], fill=(0, 0, 0, 180))
     image = Image.alpha_composite(image, overlay)
-
-    # 텍스트 렌더링 (draw는 합성된 이미지 기준)
     draw = ImageDraw.Draw(image)
-    draw.text((center_x, 40), text1, fill="white", anchor="mm", font=font_large)
-    draw.text((center_x, 80), text2, fill="white", anchor="mm", font=font_large)
-    draw.text((center_x, 120), text3, fill="white", anchor="mm", font=font_small)
 
-    # 부위별 라벨링
-    label_box_size = (100, 30)
+    # 상단 텍스트 (정확한 상하좌우 가운데 정렬)
+    def draw_centered_text(text, y, font):
+        # 그림자
+        draw.text((center_x + 1, y + 1), text, font=font, fill="black", anchor="mm")
+        # 본문
+        draw.text((center_x, y), text, font=font, fill="white", anchor="mm")
+
+    draw_centered_text(text1, box_top + 40, font_large)
+    draw_centered_text(text2, box_top + 80, font_large)
+    draw_centered_text(text3, box_top + 120, font_small)
+
+    # 부위별 라벨 박스
+    label_box_size = (150, 50)
     part_positions = {
         "눈": estimate_position(landmarks, range(33, 133)),
         "코": estimate_position(landmarks, range(168, 172)),
@@ -70,7 +70,7 @@ def generate_result_image(image, landmarks, score, part_scores):
         "눈": "eyes",
         "입": "mouth",
         "귀": "jaw",
-        "코": "nose",  # 향후 nose 값이 추가될 수 있음
+        "코": "nose",
     }
 
     for part, (x, y) in part_positions.items():
@@ -78,20 +78,25 @@ def generate_result_image(image, landmarks, score, part_scores):
         part_value = part_scores.get(key, None)
         score_text = f"{part}: {part_value:.1f}%" if part_value is not None else f"{part}: -"
 
-        # 위치 조정: 눈/코 → 왼쪽, 입/귀 → 오른쪽
         if part in ["눈", "코"]:
-            box_x = 30  # 왼쪽 여백
+            box_x = 30
         else:
-            box_x = width - label_box_size[0] - 30  # 오른쪽 여백
-
+            box_x = width - label_box_size[0] - 30
         box_y = y
+
+        # 박스 (테두리 제거)
         draw.rounded_rectangle(
             [box_x, box_y, box_x + label_box_size[0], box_y + label_box_size[1]],
-            fill="white", outline="gray", radius=8
+            fill="white", radius=8
         )
-        draw.text((box_x + 5, box_y + 5), score_text, fill="black", font=font_small)
 
-    # 이미지 저장
+        # 텍스트 정확히 가운데 정렬 + 그림자
+        text_x = box_x + label_box_size[0] // 2
+        text_y = box_y + label_box_size[1] // 2
+        draw.text((text_x + 1, text_y + 1), score_text, font=font_small, fill="gray", anchor="mm")
+        draw.text((text_x, text_y), score_text, font=font_small, fill="black", anchor="mm")
+
+    # 저장
     output_dir = "outputs"
     os.makedirs(output_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
