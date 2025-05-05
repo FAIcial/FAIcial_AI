@@ -66,8 +66,17 @@ def generate_result_image(image, landmarks, score, part_scores):
         "귀": estimate_position(landmarks, [234, 454]),
     }
 
+    # key 매핑
+    key_map = {
+        "눈": "eyes",
+        "입": "mouth",
+        "귀": "jaw",
+        "코": "nose",  # 향후 nose 값이 추가될 수 있음
+    }
+
     for part, (x, y) in part_positions.items():
-        part_value = part_scores.get(part, None)
+        key = key_map.get(part, None)
+        part_value = part_scores.get(key, None)
         score_text = f"{part}: {part_value:.1f}%" if part_value is not None else f"{part}: -"
         draw.rounded_rectangle(
             [x, y, x + label_box_size[0], y + label_box_size[1]],
