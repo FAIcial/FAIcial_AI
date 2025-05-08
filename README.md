@@ -11,33 +11,36 @@ AI 기반 얼굴 대칭 분석 백엔드 서버입니다.
 ```plaintext
 FAIcial_AI/
 │
-├── app.py                          # Flask 엔트리 포인트
-├── requirements.txt               # 필요한 의존성 리스트
-├── README.md                      # 프로젝트 실행 및 설명 문서
-├── CHANGELOG.md                   # 변경 이력
+├── app.py                        # 🔹 Flask 엔트리 포인트
+├── requirements.txt              # 🔹 의존성 명시
+├── README.md                     # 🔹 전체 설명 문서
+├── CHANGELOG.md                  # 🔹 개선 이력 정리
+├── logger.py                     # 🔹 공통 로그 설정 모듈
 │
-├── logger.py                      # logging 설정 모듈
-├── logs/
-│   └── app_2025-05-05.log         # 로그 파일 (실행 중 자동 생성)
+├── fonts/                        # 🔤 폰트 다운로드 저장 경로
+│   └── NotoSansKR-Regular.otf
 │
-├── utils/
-│   ├── image_utils.py             # 이미지 관련 유틸
-│   └── face_utils.py              # 얼굴 관련 유틸
-│
-├── analyzer/
+├── analyzer/                     # 얼굴 분석 로직
 │   ├── __init__.py
-│   ├── detect_face.py             # 얼굴 인식 및 landmark 추출
-│   ├── analyze_symmetry.py        # 얼굴 좌우 대칭 계산
-│   └── visualize_result.py        # 결과 이미지 시각화
+│   ├── detect_face.py            # 얼굴 인식 및 랜드마크 추출
+│   ├── analyze_symmetry.py       # 대칭률 계산
+│   └── visualize_result.py       # 결과 이미지 시각화
 │
-├── test_images/                   # 테스트용 이미지 폴더
+├── utils/                        # 유틸 함수들
+│   ├── image_utils.py            # (예정) 이미지 관련 유틸
+│   └── face_utils.py             # (예정) 얼굴 관련 유틸
+│
+├── test_images/                  # 🧪 테스트용 이미지
 │   ├── sample1.jpg
 │   ├── sample2.png
 │   └── sample3.jpg
 │
-└── outputs/                       # 분석 결과 이미지 저장
-    ├── result1.png
-    └── result2.png
+├── outputs/                      # 💾 분석 결과 이미지 저장 폴더
+│   └── result_YYYYMMDD_HHMMSS.png
+│
+└── logs/                         # 📝 로그 파일 저장 위치
+    └── app_YYYY-MM-DD.log
+
 ```
 
 ---
