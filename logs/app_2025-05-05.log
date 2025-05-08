@@ -265,3 +265,4 @@ cv2.error: OpenCV(4.11.0) /Users/xperience/GHA-Actions-OpenCV/_work/opencv-pytho
 2025-05-05 22:53:35 [DEBUG] FAIcial - 결과 이미지 시각화 시작
 2025-05-05 22:53:36 [INFO] FAIcial - 결과 이미지 저장됨: outputs/result_20250505_225335.png
 2025-05-05 22:53:36 [INFO] FAIcial - 분석 성공 및 응답 반환
+2025-05-05 22:59:35 [INFO] FAIcial - Flask 앱 실행 시작
