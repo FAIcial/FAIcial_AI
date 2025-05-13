@@ -19,11 +19,16 @@ if not os.path.exists(FONT_PATH):
 def generate_result_image(image, landmarks, score, part_scores):
     logger.debug("결과 이미지 시각화 시작")
 
+    # RGBA 모드로 변환
     if image.mode != "RGBA":
         image = image.convert("RGBA")
 
     width, height = image.size
-    center_x = width // 2
+
+    # 얼굴 중심 X 계산 (얼굴 중간 기준선)
+    midline_indices = [1, 2, 168, 9, 94, 152]
+    face_center_x, _ = estimate_position(landmarks, midline_indices)
+    center_x = face_center_x
 
     try:
         font_large = ImageFont.truetype(FONT_PATH, 40)
@@ -57,7 +62,7 @@ def generate_result_image(image, landmarks, score, part_scores):
     draw_centered_text(f"{score:.2f}%!!",    box_top + 80, font_large)
     draw_centered_text("완전 완벽해요~!", box_top + 120, font_small)
 
-    # 3) 부위별 점수 라벨 (기존)
+    # 3) 부위별 점수 라벨
     label_box_size = (150, 50)
     part_indices = {
         "눈": [33, 133, 160, 159, 158, 157, 173, 362, 263, 387, 386, 385, 384, 398],
@@ -70,6 +75,7 @@ def generate_result_image(image, landmarks, score, part_scores):
     for part, indices in part_indices.items():
         x, y = estimate_position(landmarks, indices)
         score_text = f"{part}: {part_scores.get(key_map[part], 0):.1f}%"
+
         # 라벨 박스
         box_x = 30 if part in ["눈", "코"] else width - label_box_size[0] - 30
         box_y = y
@@ -77,20 +83,20 @@ def generate_result_image(image, landmarks, score, part_scores):
             [box_x, box_y, box_x + label_box_size[0], box_y + label_box_size[1]],
             fill="white", radius=8
         )
-        tx, ty = box_x + 75, box_y + 25  # 중앙 정렬
+        tx, ty = box_x + label_box_size[0]//2, box_y + label_box_size[1]//2
         draw.text((tx+1, ty+1), score_text, font=font_small, fill="gray", anchor="mm")
-        draw.text((tx, ty), score_text, font=font_small, fill="black", anchor="mm")
+        draw.text((tx, ty),    score_text, font=font_small, fill="black", anchor="mm")
 
     # 4) 특정 랜드마크 거리 표시
     highlights = {
-        "입 왼쪽 끝":  61,
-        "입 오른쪽 끝": 291,
-        "눈 왼쪽 안쪽 끝": 133,
-        "눈 오른쪽 안쪽 끝": 362,
-        "귀 왼쪽 끝": 234,
-        "귀 오른쪽 끝": 454,
-        "코 왼쪽 끝":  98,
-        "코 오른쪽 끝": 327,
+        "입 왼쪽 끝":    61,
+        "입 오른쪽 끝":  291,
+        "눈 왼쪽 안쪽 끝":133,
+        "눈 오른쪽 안쪽 끝":362,
+        "귀 왼쪽 끝":    234,
+        "귀 오른쪽 끝":  454,
+        "코 왼쪽 끝":    98,
+        "코 오른쪽 끝":  327,
     }
     colors = {
         "입": "blue", "눈": "blue",
@@ -99,18 +105,17 @@ def generate_result_image(image, landmarks, score, part_scores):
 
     for name, idx in highlights.items():
         x_i, y_i = landmarks[idx]
-        # 중심점 마커
-        draw.ellipse([x_i-4, y_i-4, x_i+4, y_i+4], fill=colors[name.split()[0]])
+        part = name.split()[0]  # "입", "눈", "귀", "코"
         # 점선 거리선
         draw_dotted_line(draw, (x_i, y_i), (center_x, y_i),
-                         color=colors[name.split()[0]], width=2, dash_length=10)
+                         color=colors[part], width=2, dash_length=10)
         # 거리 텍스트
         dist = abs(center_x - x_i)
         draw.text(
             ((x_i + center_x)//2, y_i - 12),
             f"{dist}px",
             font=font_small,
-            fill=colors[name.split()[0]],
+            fill=colors[part],
             anchor="mm"
         )
 
