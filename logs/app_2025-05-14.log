@@ -24,3 +24,15 @@
 2025-05-14 00:45:46 [DEBUG] FAIcial - 결과 이미지 시각화 시작
 2025-05-14 00:45:47 [INFO] FAIcial - 결과 이미지 저장됨: outputs/result_20250514_004546.png
 2025-05-14 00:45:48 [INFO] FAIcial - 분석 성공 및 응답 반환
+2025-05-14 01:35:55 [INFO] FAIcial - 분석 요청 수신됨
+2025-05-14 01:35:55 [DEBUG] FAIcial - 얼굴 랜드마크 추출 시도
+2025-05-14 01:35:55 [DEBUG] FAIcial - 이미지 바이트 수신 및 디코딩 시도
+2025-05-14 01:35:55 [DEBUG] FAIcial - OpenCV 이미지 디코딩 성공
+2025-05-14 01:35:55 [DEBUG] FAIcial - 얼굴 랜드마크 감지 성공
+2025-05-14 01:35:55 [DEBUG] FAIcial - 랜드마크 수: 478
+2025-05-14 01:35:55 [DEBUG] FAIcial - 대칭률 계산 시작
+2025-05-14 01:35:55 [DEBUG] FAIcial - 총 대칭률 점수: 11.65
+2025-05-14 01:35:55 [DEBUG] FAIcial - 부위별 대칭률 점수: {'eyes': 0, 'mouth': np.float64(5.62), 'jaw': np.float64(34.05)}
+2025-05-14 01:35:55 [DEBUG] FAIcial - 결과 이미지 시각화 시작
+2025-05-14 01:35:56 [INFO] FAIcial - 결과 이미지 저장됨: outputs/result_20250514_013555.png
+2025-05-14 01:35:56 [INFO] FAIcial - 분석 성공 및 응답 반환
