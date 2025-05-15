@@ -41,23 +41,13 @@ def draw_dotted_line(draw, start, end, color="blue", width=2, dash_length=10):
 
 
 def crop_to_face_center_with_zoom(image: Image.Image, landmarks):
-    """
-    얼굴 귀끝(234,454)과 머리(10), 턱(152)을 기준으로
-    얼굴 중심을 4:5 비율 박스 중앙에 맞춰 확대 후 크롭합니다.
-    """
     orig_w, orig_h = image.size
-
-    # 얼굴 가로 중심
     lx, _ = landmarks[234]
     rx, _ = landmarks[454]
     face_cx = (lx + rx) / 2
-
-    # 얼굴 세로 중심
     _, ty = landmarks[10]
     _, by = landmarks[152]
     face_cy = (ty + by) / 2
-
-    # 4:5 박스 크기 결정
     ratio = 4 / 5
     if orig_w / orig_h >= ratio:
         crop_h = orig_h
@@ -65,29 +55,21 @@ def crop_to_face_center_with_zoom(image: Image.Image, landmarks):
     else:
         crop_w = orig_w
         crop_h = int(crop_w / ratio)
-
-    # 확대율 계산
     needed = [
-        (crop_w/2) / face_cx,
-        (crop_w/2) / (orig_w - face_cx),
-        (crop_h/2) / face_cy,
-        (crop_h/2) / (orig_h - face_cy),
+        (crop_w / 2) / face_cx,
+        (crop_w / 2) / (orig_w - face_cx),
+        (crop_h / 2) / face_cy,
+        (crop_h / 2) / (orig_h - face_cy),
     ]
     scale = max(1.0, *needed)
-
-    # 이미지 & 랜드마크 확대
     new_w, new_h = int(orig_w * scale), int(orig_h * scale)
     image = image.resize((new_w, new_h), Image.LANCZOS)
     landmarks = [(x * scale, y * scale) for x, y in landmarks]
-
-    # 크롭 박스 계산 및 적용
     left = int((landmarks[234][0] + landmarks[454][0]) / 2 - crop_w / 2)
     top = int(((landmarks[10][1] + landmarks[152][1]) / 2) - crop_h / 2)
     left = max(0, min(left, new_w - crop_w))
     top = max(0, min(top, new_h - crop_h))
     cropped = image.crop((left, top, left + crop_w, top + crop_h))
-
-    # 보정된 랜드마크
     new_landmarks = [(x - left, y - top) for x, y in landmarks]
     return cropped, new_landmarks
 
@@ -95,85 +77,92 @@ def crop_to_face_center_with_zoom(image: Image.Image, landmarks):
 def generate_result_image(image: Image.Image, landmarks, score, part_scores):
     logger.debug("결과 이미지 시각화 시작")
 
-    # 1) 얼굴 확대 & 4:5 비율 크롭
+    # 1) 얼굴 4:5 비율 확대 & 크롭
     image, landmarks = crop_to_face_center_with_zoom(image, landmarks)
 
-    # 2) RGBA 모드로 변환
-    if image.mode != "RGBA":
-        image = image.convert("RGBA")
-    width, height = image.size
+    # 2) 고정 해상도 리사이즈 (px 일관성)
+    STANDARD_W, STANDARD_H = 800, 1000
+    scale = STANDARD_W / image.width
+    image = image.resize((STANDARD_W, STANDARD_H), Image.LANCZOS)
+    landmarks = [(x * scale, y * scale) for x, y in landmarks]
 
-    # 3) 가로 중앙 X (텍스트·라벨용)
-    image_center_x = width // 2
+    # 3) RGBA
+    if image.mode != 'RGBA':
+        image = image.convert('RGBA')
+    w, h = image.size
 
-    # 4) 얼굴 중심 X (기준선·거리선용)
-    mid_idxs = [1, 2, 168, 9, 94, 152]
-    face_center_x, _ = estimate_position(landmarks, mid_idxs)
+    # 4) 폰트 크기 (px 고정)
+    title_size = 40
+    label_size = 24
+    face_size  = 15
+    font_title = ImageFont.truetype(FONT_PATH, title_size)
+    font_label = ImageFont.truetype(FONT_PATH, label_size)
+    font_face  = ImageFont.truetype(FONT_PATH, face_size*1.5)
 
+    # 5) 얼굴 기준선 X
+    face_center_x, _ = estimate_position(landmarks, [1, 2, 168, 9, 94, 152])
     draw = ImageDraw.Draw(image)
-    font_large = ImageFont.truetype(FONT_PATH, 40)
-    font_small = ImageFont.truetype(FONT_PATH, 24)
+    draw.line([(face_center_x, 0), (face_center_x, h)], fill='yellow', width=2)
 
-    # 5) 얼굴 기준선
-    draw.line([(face_center_x, 0), (face_center_x, height)], fill="yellow", width=2)
+    # 6) 상단 텍스트 (상/하 여유 균등 조절)
+    image_center_x = w // 2
+    vertical_padding = 20    # 텍스트 위/아래 여유
+    box_height = title_size * 3 + vertical_padding * 2
+    start_y = vertical_padding
 
-    # 6) 상단 점수 박스 & 텍스트
-    overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
+    overlay = Image.new('RGBA', (w, h), (0, 0, 0, 0))
     od = ImageDraw.Draw(overlay)
-    pad, box_h = 20, 160
-    od.rectangle([pad, pad, width - pad, pad + box_h], fill=(0, 0, 0, 180))
+    od.rectangle([20, start_y, w - 20, start_y + box_height], fill=(0, 0, 0, 180))
     image = Image.alpha_composite(image, overlay)
     draw = ImageDraw.Draw(image)
 
-    def draw_centered_text(text, y, font):
-        draw.text((image_center_x + 1, y + 1), text, font=font, fill="black", anchor="mm")
-        draw.text((image_center_x,     y),     text, font=font, fill="white", anchor="mm")
+    def ctr(txt, offset, fnt):
+        y = start_y + vertical_padding + title_size * offset
+        draw.text((image_center_x + 1, y + 1), txt, font=fnt, fill='black', anchor='mm')
+        draw.text((image_center_x,     y    ), txt, font=fnt, fill='white', anchor='mm')
 
-    draw_centered_text("당신의 비대칭은", pad + 40, font_large)
-    draw_centered_text(f"{score:.2f}%!!",    pad + 80, font_large)
-    draw_centered_text("완전 완벽해요~!",    pad + 120, font_small)
+    ctr('당신의 비대칭은',   0.5, font_title)
+    ctr(f'{score:.2f}%!!',   1.5, font_title)
+    ctr('완전 완벽해요~!',   2.5, font_face)
 
     # 7) 거리 시각화
-    highlights = {
-        "입 왼쪽 끝":    (61,  "blue"),
-        "입 오른쪽 끝":  (291, "blue"),
-        "눈 왼쪽 안쪽 끝":(133,"blue"),
-        "눈 오른쪽 안쪽 끝":(362,"blue"),
-        "귀 왼쪽 끝":    (234, "cyan"),
-        "귀 오른쪽 끝":  (454, "cyan"),
-        "코 왼쪽 끝":    (98,  "red"),
-        "코 오른쪽 끝":  (327, "red"),
-    }
-    for name, (idx, color) in highlights.items():
+    highlights = [(61,'blue'), (291,'blue'), (133,'blue'), (362,'blue'),
+                  (234,'cyan'), (454,'cyan'), (98,'red'),  (327,'red')]
+    for idx, color in highlights:
         x_i, y_i = landmarks[idx]
-        draw_dotted_line(draw, (x_i, y_i), (face_center_x, y_i), color=color, width=2, dash_length=10)
         dist = abs(face_center_x - x_i)
-        draw.text(
-            ((x_i + face_center_x) // 2, y_i - 12),
-            f"{int(dist)}px",
-            font=font_small,
-            fill=color,
-            anchor="mm"
-        )
+        draw_dotted_line(draw, (x_i, y_i), (face_center_x, y_i), color=color)
+        draw.text(((x_i + face_center_x) // 2, y_i - face_size//2),
+                  f"{int(dist)}px", font=font_face, fill=color, anchor='mm')
 
-    # 8) 부위별 라벨 (고정 위치)
-    label_w, label_h = 150, 50
-    static_pos = {
-        "눈": (int(width * 0.05),            int(height * 0.5)),
-        "코": (int(width * 0.8),             int(height * 0.5)),
-        "입": (int(width * 0.05),            int(height * 0.95 - label_h)),
-        "귀": (int(width * 0.95 - label_w),  int(height * 0.95 - label_h)),
-    }
-    key_map = {"눈": "eyes", "코": "nose", "입": "mouth", "귀": "jaw"}
+    # 8) 부위별 라벨 (랜드마크 기준 위치)
+    LABEL_W, LABEL_H = 150, 50
+    PADDING = 20
+    label_indices = {'눈':33, '코':1, '입':13, '귀':234}
+    static_pos = {}
+    for part, idx in label_indices.items():
+        x_pt, y_pt = landmarks[idx]
+        if part in ['눈','입']:
+            bx = PADDING
+        else:
+            bx = w - LABEL_W - PADDING
+        by = int(y_pt - LABEL_H / 2)
+        by = max(PADDING, min(by, h - LABEL_H - PADDING))
+        static_pos[part] = (bx, by)
+
+    key_map = {'눈':'eyes','코':'nose','입':'mouth','귀':'jaw'}
     for part, (bx, by) in static_pos.items():
         txt = f"{part}: {part_scores.get(key_map[part], 0):.1f}%"
-        draw.rounded_rectangle([bx, by, bx + label_w, by + label_h], fill="white", radius=8)
-        draw.text((bx + label_w//2, by + label_h//2), txt, font=font_small, fill="black", anchor="mm")
+        draw.rounded_rectangle([bx, by, bx + LABEL_W, by + LABEL_H], fill='white', radius=8)
+        draw.text((bx + LABEL_W // 2, by + LABEL_H // 2), txt,
+                  font=font_label, fill='black', anchor='mm')
 
-    # 9) 이미지 저장
-    out_dir = "outputs"
+    # 9) 날짜별 저장
+    date_folder = datetime.now().strftime('%Y%m%d')
+    out_dir = os.path.join('outputs', date_folder)
     os.makedirs(out_dir, exist_ok=True)
-    path = os.path.join(out_dir, f"result_{datetime.now():%Y%m%d_%H%M%S}.png")
+    filename = f"result_{datetime.now():%Y%m%d_%H%M%S}.png"
+    path = os.path.join(out_dir, filename)
     image.save(path)
     logger.info(f"결과 이미지 저장됨: {path}")
 
