@@ -185,9 +185,9 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
     for part, (bx, by) in static_pos.items():
         txt = f"{part}: {part_scores.get(key_map[part], 0):.1f}%"
         draw.rounded_rectangle([bx, by, bx + LABEL_W, by + LABEL_H],
-                               fill='white', radius=8)
+                                fill='white', radius=8)
         draw.text((bx + LABEL_W // 2, by + LABEL_H // 2),
-                  txt, font=font_label, fill='black', anchor='mm')
+                    txt, font=font_label, fill='black', anchor='mm')
 
     # 9) 파일 저장 로직 주석 처리
     # date_folder = datetime.now().strftime('%Y%m%d')

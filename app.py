@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify
 from analyzer.detect_face import detect_landmarks
 from analyzer.analyze_symmetry import calculate_symmetry
 from analyzer.visualize_result import generate_result_image
+from analyzer.image_devide import save_face_parts
 from logger import logger
 from utils.image_utils import encode_image_to_base64
 
@@ -34,11 +35,14 @@ def analyze():
         score, part_scores = calculate_symmetry(landmarks)
         logger.debug(f"총 대칭률 점수: {score}")
         logger.debug(f"부위별 대칭률 점수: {part_scores}")
+        
+        # 4. 부위별 이미지 자르기 및 이미지 일치율 검사
+        save_face_parts(landmarks, image)
 
-        # 4. 결과 이미지 시각화
+        # 5. 결과 이미지 시각화
         result_image = generate_result_image(image, landmarks, score, part_scores)
 
-        # 5. Base64 인코딩 로직 분리 함수 사용
+        # 6. Base64 인코딩 로직 분리 함수 사용
         img_data = encode_image_to_base64(result_image)
 
         logger.info("분석 성공 및 응답 반환")
