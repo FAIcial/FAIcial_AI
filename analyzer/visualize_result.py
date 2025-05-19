@@ -206,13 +206,13 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
         draw.text((bx + LABEL_W // 2, by + LABEL_H // 2),
                   txt, font=font_label, fill='black', anchor='mm')
 
-    # 9) 날짜별 저장
-    date_folder = datetime.now().strftime('%Y%m%d')
-    out_dir = os.path.join('outputs', date_folder)
-    os.makedirs(out_dir, exist_ok=True)
-    filename = f"result_{datetime.now():%Y%m%d_%H%M%S}.png"
-    path = os.path.join(out_dir, filename)
-    image.save(path)
-    logger.info(f"결과 이미지 저장됨: {path}")
+    # 9) 날짜별 저장 (주석 처리)
+    # date_folder = datetime.now().strftime('%Y%m%d')
+    # out_dir = os.path.join('outputs', date_folder)
+    # os.makedirs(out_dir, exist_ok=True)
+    # filename = f"result_{datetime.now():%Y%m%d_%H%M%S}.png"
+    # path = os.path.join(out_dir, filename)
+    # image.save(path)
+    # logger.info(f"결과 이미지 저장됨: {path}")
 
     return image
