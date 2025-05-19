@@ -4,6 +4,7 @@ from datetime import datetime
 from math import hypot
 from PIL import Image, ImageDraw, ImageFont
 from logger import logger
+from utils.face_utils import estimate_position
 
 # 폰트 경로 설정 (고정 크기)
 FONT_URL = "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Korean/NotoSansKR-Regular.otf"
@@ -14,15 +15,6 @@ if not os.path.exists(FONT_PATH):
     with open(FONT_PATH, "wb") as f:
         f.write(resp.content)
     logger.info("폰트 다운로드 완료: NotoSansKR-Regular.otf")
-
-
-def estimate_position(landmarks, indices):
-    pts = [landmarks[i] for i in indices if i < len(landmarks)]
-    if not pts:
-        return (0, 0)
-    avg_x = sum(x for x, y in pts) // len(pts)
-    avg_y = sum(y for x, y in pts) // len(pts)
-    return (avg_x, avg_y)
 
 
 def draw_dotted_line(draw, start, end, color="blue", width=2, dash_length=10):
@@ -47,12 +39,6 @@ def crop_to_face_center_with_zoom(
     v_ratio: float = 4/5,
     min_face_occupancy: float = 0.6
 ):
-    """
-    얼굴 귀끝(234,454)과 머리(10), 턱(152)을 기준으로
-    얼굴 중심을 (h_ratio,v_ratio) 위치에 맞춰 확대 후 크롭합니다.
-    또한, 얼굴 세로 높이가 크롭 후 화면의 최소 min_face_occupancy 비율을
-    차지하도록 추가 확대합니다.
-    """
     orig_w, orig_h = image.size
 
     # 얼굴 가로 중심 (귀끝 중간)
@@ -111,7 +97,7 @@ def crop_to_face_center_with_zoom(
 def generate_result_image(image: Image.Image, landmarks, score, part_scores):
     logger.debug("결과 이미지 시각화 시작")
 
-    # 1) 얼굴 4:5 비율 확대 & 크롭 (세로 80% 위치, 최소 60% 점유)
+    # 1) 얼굴 4:5 비율 확대 & 크롭
     image, landmarks = crop_to_face_center_with_zoom(
         image, landmarks,
         h_ratio=0.5,
@@ -119,7 +105,7 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
         min_face_occupancy=0.5
     )
 
-    # 2) 고정 해상도 리사이즈 (px 일관성)
+    # 2) 고정 해상도 리사이즈
     STANDARD_W, STANDARD_H = 800, 1000
     scale = STANDARD_W / image.width
     image = image.resize((STANDARD_W, STANDARD_H), Image.LANCZOS)
@@ -130,7 +116,7 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
         image = image.convert('RGBA')
     w, h = image.size
 
-    # 4) 폰트 크기 (px 고정)
+    # 4) 폰트 크기 설정
     title_size = 40
     label_size = 24
     face_size  = 15
@@ -143,9 +129,9 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
     draw = ImageDraw.Draw(image)
     draw.line([(face_center_x, 0), (face_center_x, h)], fill='yellow', width=2)
 
-    # 6) 상단 텍스트 (상/하 여유 균등 조절)
+    # 6) 상단 텍스트
     image_center_x = w // 2
-    vertical_padding = 20    # 텍스트 위/아래 여유
+    vertical_padding = 20
     box_height = title_size * 3 + vertical_padding * 2
     start_y = vertical_padding
 
@@ -183,17 +169,14 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
             anchor='mm'
         )
 
-    # 8) 부위별 라벨 (랜드마크 기준 위치, 눈/귀 위치 변경 금지)
+    # 8) 부위별 라벨
     LABEL_W, LABEL_H = 150, 50
     PADDING = 20
     label_indices = {'눈': 33, '코': 1, '입': 13, '귀': 234}
     static_pos = {}
     for part, idx in label_indices.items():
         x_pt, y_pt = landmarks[idx]
-        if part in ['눈', '입']:
-            bx = PADDING
-        else:
-            bx = w - LABEL_W - PADDING
+        bx = PADDING if part in ['눈', '입'] else w - LABEL_W - PADDING
         by = int(y_pt - LABEL_H / 2)
         by = max(PADDING, min(by, h - LABEL_H - PADDING))
         static_pos[part] = (bx, by)
@@ -206,7 +189,7 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
         draw.text((bx + LABEL_W // 2, by + LABEL_H // 2),
                   txt, font=font_label, fill='black', anchor='mm')
 
-    # 9) 날짜별 저장 (주석 처리)
+    # 9) 파일 저장 로직 주석 처리
     # date_folder = datetime.now().strftime('%Y%m%d')
     # out_dir = os.path.join('outputs', date_folder)
     # os.makedirs(out_dir, exist_ok=True)

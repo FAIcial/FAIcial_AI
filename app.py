@@ -3,8 +3,7 @@ from analyzer.detect_face import detect_landmarks
 from analyzer.analyze_symmetry import calculate_symmetry
 from analyzer.visualize_result import generate_result_image
 from logger import logger
-import base64
-import io
+from utils.image_utils import encode_image_to_base64
 
 app = Flask(__name__)
 
@@ -39,19 +38,16 @@ def analyze():
         # 4. 결과 이미지 시각화
         result_image = generate_result_image(image, landmarks, score, part_scores)
 
-        # 5. 결과 이미지 base64 인코딩
-        buffered = io.BytesIO()
-        result_image.save(buffered, format="PNG")
-        img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+        # 5. Base64 인코딩 로직 분리 함수 사용
+        img_data = encode_image_to_base64(result_image)
 
         logger.info("분석 성공 및 응답 반환")
-        # Base64 이미지 생성까지 완료되었음을 명시적으로 로깅
         logger.info("결과 이미지 Base64 생성 및 전송 완료")
 
         return jsonify({
             "symmetry_score": score,
             "part_symmetries": part_scores,
-            "image_base64": f"data:image/png;base64,{img_str}"
+            "image_base64": img_data
         })
 
     except Exception as e:
