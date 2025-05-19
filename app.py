@@ -36,7 +36,7 @@ def analyze():
         logger.debug(f"총 대칭률 점수: {score}")
         logger.debug(f"부위별 대칭률 점수: {part_scores}")
 
-        # 4. 결과 이미지 시각화 (임시로 원본 이미지 반환 가능)
+        # 4. 결과 이미지 시각화
         result_image = generate_result_image(image, landmarks, score, part_scores)
 
         # 5. 결과 이미지 base64 인코딩
@@ -45,6 +45,8 @@ def analyze():
         img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
 
         logger.info("분석 성공 및 응답 반환")
+        # Base64 이미지 생성까지 완료되었음을 명시적으로 로깅
+        logger.info("결과 이미지 Base64 생성 및 전송 완료")
 
         return jsonify({
             "symmetry_score": score,
