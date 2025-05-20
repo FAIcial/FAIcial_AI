@@ -8,7 +8,7 @@ from utils.face_utils import estimate_position
 
 # 폰트 경로 설정 (고정 크기)
 FONT_URL = "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Korean/NotoSansKR-Regular.otf"
-FONT_PATH = os.path.join("fonts", "NotoSansKR-Regular.otf")
+FONT_PATH = os.path.join("fonts", "NotoSansKR-Regular.ttf")
 if not os.path.exists(FONT_PATH):
     os.makedirs(os.path.dirname(FONT_PATH), exist_ok=True)
     resp = requests.get(FONT_URL)
