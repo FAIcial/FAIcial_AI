@@ -48,7 +48,6 @@ def analyze():
             part_name: encode_image_to_base64(part_image)
             for part_name, part_image in parts.items()
         }
-
         
         # 5. 결과 이미지 시각화
         result_image = generate_result_image(image, landmarks, score, part_scores)
@@ -61,9 +60,9 @@ def analyze():
 
         return jsonify({
             "symmetry_score": score,
-            "part_symmetries": part_scores,
+            "part_symmetries": part_scores, 
             "image_base64": img_data,
-            "face_parts": encoded_parts
+            "face_parts": encoded_parts # 각 부위별 이미지
         })
 
     except Exception as e:
