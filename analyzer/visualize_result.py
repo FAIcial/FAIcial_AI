@@ -7,14 +7,14 @@ from logger import logger
 from utils.face_utils import estimate_position
 
 # 폰트 경로 설정 (고정 크기)
-FONT_URL = "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Korean/NotoSansKR-Regular.otf"
-FONT_PATH = os.path.join("fonts", "NotoSansKR-Regular.otf")
+FONT_URL = "https://github.com/googlefonts/noto-cjk/raw/main/Sans/OTF/Korean/NotoSansKR-Regular.ttf"
+FONT_PATH = os.path.join("fonts", "NotoSansKR-Regular.ttf")
 if not os.path.exists(FONT_PATH):
     os.makedirs(os.path.dirname(FONT_PATH), exist_ok=True)
     resp = requests.get(FONT_URL)
     with open(FONT_PATH, "wb") as f:
         f.write(resp.content)
-    logger.info("폰트 다운로드 완료: NotoSansKR-Regular.otf")
+    logger.info("폰트 다운로드 완료: NotoSansKR-Regular.ttf")
 
 
 def draw_dotted_line(draw, start, end, color="blue", width=2, dash_length=10):
@@ -185,9 +185,9 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
     for part, (bx, by) in static_pos.items():
         txt = f"{part}: {part_scores.get(key_map[part], 0):.1f}%"
         draw.rounded_rectangle([bx, by, bx + LABEL_W, by + LABEL_H],
-                               fill='white', radius=8)
+                                fill='white', radius=8)
         draw.text((bx + LABEL_W // 2, by + LABEL_H // 2),
-                  txt, font=font_label, fill='black', anchor='mm')
+                    txt, font=font_label, fill='black', anchor='mm')
 
     # 9) 파일 저장 로직 주석 처리
     # date_folder = datetime.now().strftime('%Y%m%d')

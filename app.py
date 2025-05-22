@@ -1,7 +1,9 @@
 from flask import Flask, request, jsonify
 from analyzer.detect_face import detect_landmarks
 from analyzer.analyze_symmetry import calculate_symmetry
+from analyzer.image_devide import compare_symmetric_parts_from_images
 from analyzer.visualize_result import generate_result_image
+from analyzer.image_devide import get_face_parts
 from logger import logger
 from utils.image_utils import encode_image_to_base64
 
@@ -34,11 +36,23 @@ def analyze():
         score, part_scores = calculate_symmetry(landmarks)
         logger.debug(f"총 대칭률 점수: {score}")
         logger.debug(f"부위별 대칭률 점수: {part_scores}")
-
-        # 4. 결과 이미지 시각화
+        
+        # 3. 부위별 이미지 자르기 및 대칭 비교
+        parts = get_face_parts(landmarks, image)
+        symmetry_part_scores = compare_symmetric_parts_from_images(parts)
+        
+        logger.debug(f"부위별 일치율 : {symmetry_part_scores}")
+        
+        # 4. 부위별 이미지 Base64 인코딩
+        encoded_parts = {
+            part_name: encode_image_to_base64(part_image)
+            for part_name, part_image in parts.items()
+        }
+        
+        # 5. 결과 이미지 시각화
         result_image = generate_result_image(image, landmarks, score, part_scores)
 
-        # 5. Base64 인코딩 로직 분리 함수 사용
+        # 6. Base64 인코딩 로직 분리 함수 사용
         img_data = encode_image_to_base64(result_image)
 
         logger.info("분석 성공 및 응답 반환")
@@ -46,8 +60,9 @@ def analyze():
 
         return jsonify({
             "symmetry_score": score,
-            "part_symmetries": part_scores,
-            "image_base64": img_data
+            "part_symmetries": part_scores, 
+            "image_base64": img_data,
+            "face_parts": encoded_parts # 각 부위별 이미지
         })
 
     except Exception as e:
