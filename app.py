@@ -4,7 +4,7 @@ from analyzer.analyze_symmetry import calculate_symmetry
 from analyzer.visualize_result import generate_result_image
 from logger import logger
 from utils.image_utils import encode_image_to_base64
-from utils.visual_utils import draw_landmark_points  # 디버그 유틸 import
+from utils.visual_utils import draw_landmark_points, draw_specific_points  # 디버그 유틸 import
 
 app = Flask(__name__)
 
@@ -31,10 +31,13 @@ def debug_landmarks():
         # 1a) 랜드마크 개수 로깅
         logger.info(f"검출된 랜드마크 개수: {len(landmarks)}")
 
-        # 2) 점 형태로 랜드마크 찍기
+        # 2) 모든 랜드마크 점 찍기
         debug_img = draw_landmark_points(image, landmarks, color="lime", radius=2)
 
-        # 3) Base64 인코딩
+        # 3) 귀 포인트 강조 (인덱스 234, 454)
+        debug_img = draw_specific_points(debug_img, landmarks, [234, 454], color="red", radius=6)
+
+        # 4) Base64 인코딩
         img_data = encode_image_to_base64(debug_img)
 
         logger.info("디버그 랜드마크 이미지 생성 및 전송 완료")
@@ -44,7 +47,6 @@ def debug_landmarks():
         logger.exception("디버그 랜드마크 처리 중 예외 발생")
         return jsonify({"error": str(e)}), 500
 # ──────────────────────────────────────────────────────────────────────────────
-
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
@@ -92,7 +94,6 @@ def analyze():
     except Exception as e:
         logger.exception("분석 중 예외 발생")
         return jsonify({"error": str(e)}), 500
-
 
 if __name__ == "__main__":
     logger.info("Flask 앱 실행 시작")
