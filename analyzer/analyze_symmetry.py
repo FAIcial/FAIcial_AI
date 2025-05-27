@@ -4,17 +4,19 @@ import numpy as np
 
 # MediaPipe landmark index 기준 좌우 짝 (예: 좌: 33, 우: 263)
 # 각 쌍은 (left_idx, right_idx)
+# “nose” 파트를 추가하여 코 양 옆 팁(98, 327)도 대칭률에 포함합니다.
 PAIR_INDICES = {
     "eyes": [(33, 263), (160, 387), (159, 386)],
     "mouth": [(61, 291), (78, 308), (95, 324)],
-    "jaw": [(234, 454), (172, 397), (152, 378)]
+    "jaw": [(234, 454), (172, 397), (152, 378)],
+    "nose": [(98, 327)],
 }
 
 def calculate_symmetry(landmarks):
     if not landmarks or len(landmarks) < 468:
         raise ValueError("Insufficient landmark points.")
 
-    # 중심선 기준 x좌표 (좌우 기준선 설정: 코 중심)
+    # 중심선 기준 x좌표 (코 중심 기준)
     left_x = landmarks[234][0]
     right_x = landmarks[454][0]
     center_x = (left_x + right_x) / 2
