@@ -1,13 +1,52 @@
 from flask import Flask, request, jsonify
 from analyzer.detect_face import detect_landmarks
 from analyzer.analyze_symmetry import calculate_symmetry
-from analyzer.image_devide import compare_symmetric_parts_from_images
 from analyzer.visualize_result import generate_result_image
-from analyzer.image_devide import get_face_parts
 from logger import logger
 from utils.image_utils import encode_image_to_base64
+from utils.visual_utils import draw_landmark_points, draw_specific_points  # 디버그 유틸 import
 
 app = Flask(__name__)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# DEBUG LANDMARKS ENDPOINT
+@app.route("/debug_landmarks", methods=["POST"])
+def debug_landmarks():
+    logger.info("디버그 랜드마크 요청 수신됨")
+
+    if "image" not in request.files:
+        logger.warning("요청에 이미지 파일 없음")
+        return jsonify({"error": "No image file provided"}), 400
+
+    file = request.files["image"]
+    image_bytes = file.read()
+
+    try:
+        # 1) 얼굴 랜드마크 추출
+        landmarks, image = detect_landmarks(image_bytes)
+        if landmarks is None:
+            logger.warning("얼굴이 감지되지 않음")
+            return jsonify({"error": "No face detected"}), 400
+
+        # 1a) 랜드마크 개수 로깅
+        logger.info(f"검출된 랜드마크 개수: {len(landmarks)}")
+
+        # 2) 모든 랜드마크 점 찍기
+        debug_img = draw_landmark_points(image, landmarks, color="lime", radius=2)
+
+        # 3) 귀 포인트 강조 (인덱스 234, 454)
+        debug_img = draw_specific_points(debug_img, landmarks, [234, 454], color="red", radius=6)
+
+        # 4) Base64 인코딩
+        img_data = encode_image_to_base64(debug_img)
+
+        logger.info("디버그 랜드마크 이미지 생성 및 전송 완료")
+        return jsonify({"image_base64": img_data})
+
+    except Exception as e:
+        logger.exception("디버그 랜드마크 처리 중 예외 발생")
+        return jsonify({"error": str(e)}), 500
+# ──────────────────────────────────────────────────────────────────────────────
 
 @app.route("/analyze", methods=["POST"])
 def analyze():
@@ -36,23 +75,11 @@ def analyze():
         score, part_scores = calculate_symmetry(landmarks)
         logger.debug(f"총 대칭률 점수: {score}")
         logger.debug(f"부위별 대칭률 점수: {part_scores}")
-        
-        # 3. 부위별 이미지 자르기 및 대칭 비교
-        parts = get_face_parts(landmarks, image)
-        symmetry_part_scores = compare_symmetric_parts_from_images(parts)
-        
-        logger.debug(f"부위별 일치율 : {symmetry_part_scores}")
-        
-        # 4. 부위별 이미지 Base64 인코딩
-        encoded_parts = {
-            part_name: encode_image_to_base64(part_image)
-            for part_name, part_image in parts.items()
-        }
-        
-        # 5. 결과 이미지 시각화
+
+        # 4. 결과 이미지 시각화
         result_image = generate_result_image(image, landmarks, score, part_scores)
 
-        # 6. Base64 인코딩 로직 분리 함수 사용
+        # 5. Base64 인코딩
         img_data = encode_image_to_base64(result_image)
 
         logger.info("분석 성공 및 응답 반환")
@@ -60,9 +87,8 @@ def analyze():
 
         return jsonify({
             "symmetry_score": score,
-            "part_symmetries": part_scores, 
-            "image_base64": img_data,
-            "face_parts": encoded_parts # 각 부위별 이미지
+            "part_symmetries": part_scores,
+            "image_base64": img_data
         })
 
     except Exception as e:
