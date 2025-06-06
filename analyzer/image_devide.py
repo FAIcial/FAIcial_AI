@@ -11,42 +11,49 @@ FACE_PARTS = {
     "mouth": [13, 14, 78, 308, 61, 291],
     "left_ear": [234, 93],
     "right_ear": [454, 323],
+    "left_chin": [152, 150, 149, 176],
+    "right_chin": [152, 379, 378, 400],
 }
 
-# === 부위별 패딩 설정 (상하좌우) ===
-PADDING_MAP = {
-    'left_eye': {'top': 5, 'bottom': 5, 'left': 10, 'right': 10},
-    'right_eye': {'top': 5, 'bottom': 5, 'left': 10, 'right': 10},
-    'nose': {'top': 100, 'bottom': 10, 'left': 10, 'right': 10},
-    'mouth': {'top': 20, 'bottom': 25, 'left': 10, 'right': 10},
-    'left_ear': {'top': 50, 'bottom': 10, 'left': 10, 'right': 10},
-    'right_ear': {'top': 50, 'bottom': 10, 'left': 10, 'right': 10},
+# 비율 기반 패딩 설정 (비율: 0.0 ~ 1.0)
+PADDING_RATIO_MAP = {
+    'left_eye': {'top': 0.02, 'bottom': 0.02, 'left': 0.04, 'right': 0.04},
+    'right_eye': {'top': 0.02, 'bottom': 0.02, 'left': 0.04, 'right': 0.04},
+    'nose': {'top': 0.1, 'bottom': 0.03, 'left': 0.03, 'right': 0.03},
+    'mouth': {'top': 0.05, 'bottom': 0.06, 'left': 0.04, 'right': 0.04},
+    'left_ear': {'top': 0.1, 'bottom': 0.03, 'left': 0.05, 'right': 0.00},
+    'right_ear': {'top': 0.1, 'bottom': 0.03, 'left': 0.00, 'right': 0.05},
+    "left_chin": {'top': 0.12, 'bottom': 0.02, 'left': 0.10, 'right': 0.00},
+    "right_chin": {'top': 0.12, 'bottom': 0.02, 'left': 0.00, 'right': 0.10},
 }
 
-# === 부위별 영역 자르기 함수 ===
-def devide_region(image_pil: Image.Image, landmarks: list[tuple], indices: list[int], padding: dict) -> Image.Image:
+# 영역별 자르기 함수
+def devide_region(image_pil: Image.Image, landmarks: list[tuple], indices: list[int], padding_ratio: dict) -> Image.Image:
     points = [landmarks[i] for i in indices if 0 <= i < len(landmarks)]
     xs = [p[0] for p in points]
     ys = [p[1] for p in points]
 
-    top = padding.get('top', 20)
-    bottom = padding.get('bottom', 20)
-    left = padding.get('left', 20)
-    right = padding.get('right', 20)
+    width, height = image_pil.size
+
+    # 비율 기반 padding 계산
+    top = int(padding_ratio.get('top', 0.02) * height)
+    bottom = int(padding_ratio.get('bottom', 0.02) * height)
+    left = int(padding_ratio.get('left', 0.02) * width)
+    right = int(padding_ratio.get('right', 0.02) * width)
 
     min_x = max(min(xs) - left, 0)
-    max_x = min(max(xs) + right, image_pil.width)
+    max_x = min(max(xs) + right, width)
     min_y = max(min(ys) - top, 0)
-    max_y = min(max(ys) + bottom, image_pil.height)
+    max_y = min(max(ys) + bottom, height)
 
     return image_pil.crop((min_x, min_y, max_x, max_y))
 
-# === 얼굴 부위 이미지 추출 (저장 없이 반환) ===
+# 얼굴 부위별 검출
 def get_face_parts(landmarks: list[tuple], image_pil: Image.Image) -> dict[str, Image.Image]:
     parts = {}
     for part_name, indices in FACE_PARTS.items():
-        padding = PADDING_MAP.get(part_name, {})
-        cropped = devide_region(image_pil, landmarks, indices, padding)
+        padding_ratio = PADDING_RATIO_MAP.get(part_name, {})
+        cropped = devide_region(image_pil, landmarks, indices, padding_ratio)
         parts[part_name] = cropped
     return parts
 
@@ -108,12 +115,12 @@ def compare_match_parts_from_images(parts: dict[str, Image.Image]) -> dict[str, 
     results: dict[str, float | None] = {}
 
     # 각 부위별 일치율 계산
-    results["eye"] = (
+    results["eyes"] = (
         compare_ssim_flipped_images(parts["left_eye"], parts["right_eye"])
         if "left_eye" in parts and "right_eye" in parts else None
     )
 
-    results["ear"] = (
+    results["ears"] = (
         compare_ssim_flipped_images(parts["left_ear"], parts["right_ear"])
         if "left_ear" in parts and "right_ear" in parts else None
     )
@@ -127,16 +134,10 @@ def compare_match_parts_from_images(parts: dict[str, Image.Image]) -> dict[str, 
         compare_split_match(parts["mouth"])
         if "mouth" in parts else None
     )
-
-    # 가중치 설정 (귀는 0.2로 낮게 설정)
-    weights = {
-        "eye": 1.1,
-        "ear": 0.2,
-        "nose": 1.1,
-        "mouth": 1.1,
-    }
-
-    # 총 일치율 계산
-    results["total"] = weighted_average(results, weights)
+    
+    results["chin"] = (
+        compare_ssim_flipped_images(parts["left_chin"], parts["right_chin"])
+        if "left_chin" in parts and "right_chin" in parts else None
+    )
 
     return results
