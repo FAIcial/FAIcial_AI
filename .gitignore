@@ -10,3 +10,4 @@ __pycache__/
 *.png
 *.jpg
 *.jpeg
+result_image_base64.txt

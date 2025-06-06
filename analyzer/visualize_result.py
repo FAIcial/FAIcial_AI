@@ -106,23 +106,26 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
     )
 
     # 2) 고정 해상도 리사이즈
-    STANDARD_W, STANDARD_H = 800, 1000
+    STANDARD_W, STANDARD_H = 600, 750
     scale = STANDARD_W / image.width
     image = image.resize((STANDARD_W, STANDARD_H), Image.LANCZOS)
     landmarks = [(x * scale, y * scale) for x, y in landmarks]
 
-    # 3) RGBA
+    # 2) 해상도 기반 폰트 크기 동적 조절
+    scale_factor = image.width / 800
+    title_size = int(40 * scale_factor)
+    label_size = int(24 * scale_factor)
+    face_size = int(15 * scale_factor)
+
+    # 3) 폰트 크기 설정
+    font_title = ImageFont.truetype(FONT_PATH, title_size)
+    font_label = ImageFont.truetype(FONT_PATH, label_size)
+    font_face = ImageFont.truetype(FONT_PATH, int(face_size * 1.5))
+
+    # 4) RGBA
     if image.mode != 'RGBA':
         image = image.convert('RGBA')
     w, h = image.size
-
-    # 4) 폰트 크기 설정
-    title_size = 40
-    label_size = 24
-    face_size  = 15
-    font_title = ImageFont.truetype(FONT_PATH, title_size)
-    font_label = ImageFont.truetype(FONT_PATH, label_size)
-    font_face  = ImageFont.truetype(FONT_PATH, int(face_size * 1.5))
 
     # 5) 얼굴 기준선 X
     face_center_x, _ = estimate_position(landmarks, [1, 2, 168, 9, 94, 152])
@@ -130,9 +133,18 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
     draw.line([(face_center_x, 0), (face_center_x, h)], fill='yellow', width=2)
 
     # 6) 상단 텍스트
-    image_center_x = w // 2
-    vertical_padding = 20
-    box_height = title_size * 3 + vertical_padding * 2
+    if score >= 90:
+        message = "~(^ w ^~) 이 정도면 대칭의 신이에요! (~ ^ w ^)~"
+    elif score >= 75:
+        message = "☆대칭 미모의 숨겨진 고수~!☆"
+    elif score >= 60:
+        message = "살~짝 삐뚤, 그게 매력이라구요! ^^b"
+    else:
+        message = "비대칭? 그건 개성이라고 불러요 :)"
+
+    image_center_x = image.width // 2
+    vertical_padding = int(20 * scale_factor)
+    box_height = int(title_size * 3 + vertical_padding * 2)
     start_y = vertical_padding
 
     overlay = Image.new('RGBA', (w, h), (0, 0, 0, 0))
@@ -144,11 +156,11 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
     def ctr(txt, offset, fnt):
         y = start_y + vertical_padding + title_size * offset
         draw.text((image_center_x + 1, y + 1), txt, font=fnt, fill='black', anchor='mm')
-        draw.text((image_center_x,     y    ), txt, font=fnt, fill='white', anchor='mm')
+        draw.text((image_center_x, y), txt, font=fnt, fill='white', anchor='mm')
 
     ctr('당신의 비대칭은', 0.5, font_title)
     ctr(f'{score:.2f}%!!', 1.5, font_title)
-    ctr('완전 완벽해요~!', 2.5, font_face)
+    ctr(message, 2.5, font_face)
 
     # 7) 거리 시각화
     highlights = [
@@ -161,14 +173,20 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
         x_i, y_i = landmarks[idx]
         dist = abs(face_center_x - x_i)
         draw_dotted_line(draw, (x_i, y_i), (face_center_x, y_i), color=color)
+
+        # 텍스트 좌표 보정
+        text_x = (x_i + face_center_x) // 2
+        raw_text_y = y_i - face_size // 2
+        text_y = max(0, min(raw_text_y, h - 1))  # 이미지 범위로 제한
+
         draw.text(
-            ((x_i + face_center_x) // 2, y_i - face_size // 2),
+            (text_x, text_y),
             f"{int(dist)}px",
             font=font_face,
             fill=color,
             anchor='mm'
         )
-
+        
     # 8) 부위별 라벨
     LABEL_W, LABEL_H = 150, 50
     PADDING = 20
@@ -181,7 +199,7 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
         by = max(PADDING, min(by, h - LABEL_H - PADDING))
         static_pos[part] = (bx, by)
 
-    key_map = {'눈': 'eyes', '코': 'nose', '입': 'mouth', '귀': 'jaw'}
+    key_map = {'눈': 'eyes', '코': 'nose', '입': 'mouth', '귀': 'ears'}
     for part, (bx, by) in static_pos.items():
         txt = f"{part}: {part_scores.get(key_map[part], 0):.1f}%"
         draw.rounded_rectangle([bx, by, bx + LABEL_W, by + LABEL_H],

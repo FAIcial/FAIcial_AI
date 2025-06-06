@@ -6,6 +6,7 @@ from analyzer.image_devide import compare_match_parts_from_images
 from analyzer.image_devide import get_face_parts
 from logger import logger
 from utils.image_utils import encode_image_to_base64
+from utils.image_utils import save_base64_to_txt
 from utils.visual_utils import draw_landmark_points, draw_specific_points  # 디버그 유틸 import
 
 app = Flask(__name__)
@@ -85,37 +86,62 @@ def analyze():
 
         logger.debug(f"부위별 일치율 : {match_scores}")
         
-        # 4. 부위별 이미지 Base64 인코딩
+        # 5. 부위별 이미지 Base64 인코딩
         encoded_parts = {
             part_name: encode_image_to_base64(part_image)
             for part_name, part_image in parts_images.items()
         }
         
-        # 5. 최종 점수 계산
-        if match_scores["total"] is not None and symmetry_score is not None:
-            final_score = round((symmetry_score * 0.5 + match_scores["total"] * 0.5), 2)
-            logger.debug(f"최종 안면 비대칭 점수: {final_score}")
-        else:
-            final_score = None
-            logger.warning("일치률 또는 대칭률 점수가 None입니다. 최종 점수 계산 불가.")
+        # 6. 최종 점수 계산
+        # 부위별 최종 점수 가중치(합 1.00)
+        weights = {
+            "eyes": 0.30,
+            "nose": 0.20,
+            "mouth": 0.20,
+            "chin": 0.20,  # 턱 점수 포함 시
+            "ears": 0.10    # 귀 비중 낮게
+        }
 
-        # 6. 결과 이미지 시각화
-        result_image = generate_result_image(image, landmarks, final_score, part_scores)
+        final_scores = {}
+        weighted_total = 0.0
 
-        # 7. Base64 인코딩
+        for part, weight in weights.items():
+            match = match_scores.get(part, 0)
+
+            if part == "chin":
+                final = round(match, 2)  # chin은 일치율만 사용
+            else:
+                sym = part_scores.get(part, 0)
+                final = round((sym * 0.5 + match * 0.5), 2)  # 다른 부위는 5:5
+
+            final_scores[part] = final
+            weighted_total += final * weight
+
+        # 전체 최종 점수 (가중 평균)
+        final_score = round(weighted_total, 2)
+
+        logger.debug(f"일치율 + 대칭률 : {final_scores}")
+
+        # 7. 결과 이미지 시각화
+        result_image = generate_result_image(image, landmarks, final_score, final_scores)
+
+        # 8. Base64 인코딩
         img_data = encode_image_to_base64(result_image)
+        
+        # 텍스트 파일로 저장
+        save_base64_to_txt(img_data, "result_image_base64.txt")
+
+        # 저장
+        image.save("decoded_output.png", format="PNG")
 
         logger.info("분석 성공 및 응답 반환")
         logger.info("결과 이미지 Base64 생성 및 전송 완료")
 
         return jsonify({
             "parts_images": encoded_parts, # parts_images : 안면 부위 사진
-            "symmetry_score": symmetry_score, # symmetry_score : 총 대칭률 점수
-            "part_symmetries": part_scores, # part_score : 부위별 대칭률 점수
-            "match_score": match_scores["total"], # match_score : 총 일치율 점수
-            "part_match" : match_scores, # part_match : 부위별 일치율 점수
+            "final_socres": final_scores, # final_scores : 각 부위 최종 점수
             "final_score": final_score, # final_score : 최종 안면 비대칭 점수
-            "image_base64": img_data
+            "result_image": img_data # 최종 결과 사진
         })
 
     except Exception as e:
