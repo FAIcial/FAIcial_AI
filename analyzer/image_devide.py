@@ -69,7 +69,7 @@ def compare_ssim_flipped_images(img1: Image.Image, img2: Image.Image) -> float:
     return round(score * 100, 2)
 
 # === 코, 입 반으로 나눈 후 일치율 비교 함수 ===
-def compare_split_symmetry(image: Image.Image) -> float:
+def compare_split_match(image: Image.Image) -> float:
     width, height = image.size
     mid = width // 2
 
@@ -90,33 +90,53 @@ def compare_split_symmetry(image: Image.Image) -> float:
     score, _ = ssim(arr1, arr2, full=True)
     return round(score * 100, 2)
 
+# 가중치에 따른 평균 도출
+def weighted_average(score_dict, weights):
+        total_weighted_score = 0.0
+        total_weight = 0.0
+        for part, score in score_dict.items():
+            if score is not None:
+                weight = weights.get(part, 1.0)
+                total_weighted_score += score * weight
+                total_weight += weight
+        return round(total_weighted_score / total_weight, 2) if total_weight else None
 
-# === 각 부위 이미지 일치율 계산 함수 ===
-def compare_symmetric_parts_from_images(parts: dict[str, Image.Image]) -> dict[str, float | None]:
-    results = {}
+# 각 일치율 계산 함수
+def compare_match_parts_from_images(parts: dict[str, Image.Image]) -> dict[str, float | None]:
+    
+    # 부위별 일치율 결과 저장
+    results: dict[str, float | None] = {}
 
-    # 눈
-    if "left_eye" in parts and "right_eye" in parts:
-        results["eye"] = compare_ssim_flipped_images(parts["left_eye"], parts["right_eye"])
-    else:
-        results["eye"] = None
+    # 각 부위별 일치율 계산
+    results["eye"] = (
+        compare_ssim_flipped_images(parts["left_eye"], parts["right_eye"])
+        if "left_eye" in parts and "right_eye" in parts else None
+    )
 
-    # 귀
-    if "left_ear" in parts and "right_ear" in parts:
-        results["ear"] = compare_ssim_flipped_images(parts["left_ear"], parts["right_ear"])
-    else:
-        results["ear"] = None
+    results["ear"] = (
+        compare_ssim_flipped_images(parts["left_ear"], parts["right_ear"])
+        if "left_ear" in parts and "right_ear" in parts else None
+    )
 
-    # 코 (자기 자신을 반으로 나눠 비교)
-    if "nose" in parts:
-        results["nose"] = compare_split_symmetry(parts["nose"])
-    else:
-        results["nose"] = None
+    results["nose"] = (
+        compare_split_match(parts["nose"])
+        if "nose" in parts else None
+    )
 
-    # 입
-    if "mouth" in parts:
-        results["mouth"] = compare_split_symmetry(parts["mouth"])
-    else:
-        results["mouth"] = None
+    results["mouth"] = (
+        compare_split_match(parts["mouth"])
+        if "mouth" in parts else None
+    )
+
+    # 가중치 설정 (귀는 0.2로 낮게 설정)
+    weights = {
+        "eye": 1.1,
+        "ear": 0.2,
+        "nose": 1.1,
+        "mouth": 1.1,
+    }
+
+    # 총 일치율 계산
+    results["total"] = weighted_average(results, weights)
 
     return results
