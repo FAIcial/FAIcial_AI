@@ -214,11 +214,21 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
         by = max(PADDING, min(by, h - LABEL_H - PADDING))
         static_pos[part] = (bx, by)
 
+    # 그림자 위치 (조금 아래, 오른쪽)
+    shadow_offset = 2
+    shadow_color = (0, 0, 0, 100)  # 반투명 검정색
+
     key_map = {'눈': 'eyes', '코': 'nose', '입': 'mouth', '귀': 'ears', '턱': 'chin'}
     for part, (bx, by) in static_pos.items():
         txt = f"{part}: {part_scores.get(key_map[part], 0):.1f}%"
+        
+        # 그림자 먼저 그림
+        draw.rounded_rectangle(
+            [bx + shadow_offset, by + shadow_offset, bx + LABEL_W + shadow_offset, by + LABEL_H + shadow_offset],
+            fill=shadow_color, radius=8)
+
         draw.rounded_rectangle([bx, by, bx + LABEL_W, by + LABEL_H],
-                                fill='white', radius=8, outline="gray")
+                                fill='white', radius=8)
         safe_text(draw, txt, bx + LABEL_W // 2, by + LABEL_H // 2, font_label, 'black')
 
     return image
