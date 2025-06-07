@@ -6,7 +6,6 @@ from analyzer.image_devide import compare_match_parts_from_images
 from analyzer.image_devide import get_face_parts
 from logger import logger
 from utils.image_utils import encode_image_to_base64
-from utils.image_utils import save_base64_to_txt
 from utils.visual_utils import draw_landmark_points, draw_specific_points  # 디버그 유틸 import
 
 app = Flask(__name__)
@@ -129,12 +128,6 @@ def analyze():
         # 8. Base64 인코딩
         img_data = encode_image_to_base64(result_image)
         
-        # 텍스트 파일로 저장
-        save_base64_to_txt(img_data, "result_image_base64.txt")
-
-        # 저장
-        image.save("decoded_output.png", format="PNG")
-
         logger.info("분석 성공 및 응답 반환")
         logger.info("결과 이미지 Base64 생성 및 전송 완료")
 
