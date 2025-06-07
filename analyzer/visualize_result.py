@@ -75,6 +75,9 @@ def crop_to_face_center_with_zoom(
         needed.append(occ_scale)
 
     scale = max(1.0, *needed)
+    
+    # 추가로 확대 상한선 제한
+    scale = min(scale, 1.25)  # 1.25배 이상 확대 금지
 
     # 이미지 및 랜드마크 확대
     new_w, new_h = int(orig_w * scale), int(orig_h * scale)
@@ -82,12 +85,14 @@ def crop_to_face_center_with_zoom(
     landmarks = [(x * scale, y * scale) for x, y in landmarks]
     face_cx *= scale
     face_cy *= scale
+    
+    # 크롭 크기를 새 이미지보다 크게 만들지 않도록 보정
+    crop_w = min(crop_w, new_w)
+    crop_h = min(crop_h, new_h)
 
     # 크롭 박스 좌상단 계산
-    left = int(face_cx - crop_w * h_ratio)
-    top  = int(face_cy - crop_h * v_ratio)
-    left = max(0, min(left, new_w - crop_w))
-    top  = max(0, min(top, new_h - crop_h))
+    left = max(0, min(int(face_cx - crop_w * h_ratio), new_w - crop_w))
+    top  = max(0, min(int(face_cy - crop_h * v_ratio), new_h - crop_h))
 
     cropped = image.crop((left, top, left + crop_w, top + crop_h))
     new_landmarks = [(x - left, y - top) for x, y in landmarks]
@@ -106,33 +111,33 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
     )
 
     # 2) 고정 해상도 리사이즈
-    STANDARD_W, STANDARD_H = 600, 750
+    STANDARD_W, STANDARD_H = 800, 1000
     scale = STANDARD_W / image.width
     image = image.resize((STANDARD_W, STANDARD_H), Image.LANCZOS)
     landmarks = [(x * scale, y * scale) for x, y in landmarks]
 
-    # 2) 해상도 기반 폰트 크기 동적 조절
+    # 3) 해상도 기반 폰트 크기 동적 조절
     scale_factor = image.width / 800
     title_size = int(40 * scale_factor)
     label_size = int(24 * scale_factor)
     face_size = int(15 * scale_factor)
 
-    # 3) 폰트 크기 설정
+    # 4) 폰트 크기 설정
     font_title = ImageFont.truetype(FONT_PATH, title_size)
     font_label = ImageFont.truetype(FONT_PATH, label_size)
     font_face = ImageFont.truetype(FONT_PATH, int(face_size * 1.5))
 
-    # 4) RGBA
+    # 5) RGBA
     if image.mode != 'RGBA':
         image = image.convert('RGBA')
     w, h = image.size
 
-    # 5) 얼굴 기준선 X
+    # 6) 얼굴 기준선 X
     face_center_x, _ = estimate_position(landmarks, [1, 2, 168, 9, 94, 152])
     draw = ImageDraw.Draw(image)
     draw.line([(face_center_x, 0), (face_center_x, h)], fill='yellow', width=2)
 
-    # 6) 상단 텍스트
+    # 7) 상단 텍스트
     if score >= 90:
         message = "~(^ w ^~) 이 정도면 대칭의 신이에요! (~ ^ w ^)~"
     elif score >= 75:
@@ -153,16 +158,32 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
     image = Image.alpha_composite(image, overlay)
     draw = ImageDraw.Draw(image)
 
-    def ctr(txt, offset, fnt):
-        y = start_y + vertical_padding + title_size * offset
-        draw.text((image_center_x + 1, y + 1), txt, font=fnt, fill='black', anchor='mm')
-        draw.text((image_center_x, y), txt, font=fnt, fill='white', anchor='mm')
+    def safe_text(draw_obj, text, x, y, font, fill, anchor='mm'):
+        # 텍스트 크기 계산
+        bbox = draw_obj.textbbox((x, y), text, font=font, anchor=anchor)
+        left, top, right, bottom = bbox
 
-    ctr('당신의 비대칭은', 0.5, font_title)
-    ctr(f'{score:.2f}%!!', 1.5, font_title)
-    ctr(message, 2.5, font_face)
+        # 좌표 보정 (이미지를 벗어나지 않도록)
+        dx, dy = 0, 0
+        if top < 0:
+            dy = -top + 5
+        elif bottom > image.height:
+            dy = image.height - bottom - 5
 
-    # 7) 거리 시각화
+        if left < 0:
+            dx = -left + 5
+        elif right > image.width:
+            dx = image.width - right - 5
+
+        # 보정된 위치에 그림자와 텍스트 출력
+        draw_obj.text((x + dx + 1, y + dy + 1), text, font=font, fill='black', anchor=anchor)
+        draw_obj.text((x + dx, y + dy), text, font=font, fill=fill, anchor=anchor)
+    
+    safe_text(draw, '당신의 대칭률은', image_center_x, start_y + vertical_padding + title_size * 0.5, font_title, 'white')
+    safe_text(draw, f'{score:.2f}%!!', image_center_x, start_y + vertical_padding + title_size * 1.5, font_title, 'white')
+    safe_text(draw, message, image_center_x, start_y + vertical_padding + title_size * 2.5, font_face, 'white')
+
+    # 8) 거리 시각화
     highlights = [
         (61,  'blue'), (291, 'blue'),
         (133, 'blue'), (362, 'blue'),
@@ -179,18 +200,12 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
         raw_text_y = y_i - face_size // 2
         text_y = max(0, min(raw_text_y, h - 1))  # 이미지 범위로 제한
 
-        draw.text(
-            (text_x, text_y),
-            f"{int(dist)}px",
-            font=font_face,
-            fill=color,
-            anchor='mm'
-        )
+        safe_text(draw, f"{int(dist)}px", text_x, text_y, font_face, color)
         
-    # 8) 부위별 라벨
+    # 9) 부위별 라벨
     LABEL_W, LABEL_H = 150, 50
     PADDING = 20
-    label_indices = {'눈': 33, '코': 1, '입': 13, '귀': 234}
+    label_indices = {'눈': 33, '코': 1, '입': 13, '귀': 234, '턱' : 379}
     static_pos = {}
     for part, idx in label_indices.items():
         x_pt, y_pt = landmarks[idx]
@@ -199,21 +214,11 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
         by = max(PADDING, min(by, h - LABEL_H - PADDING))
         static_pos[part] = (bx, by)
 
-    key_map = {'눈': 'eyes', '코': 'nose', '입': 'mouth', '귀': 'ears'}
+    key_map = {'눈': 'eyes', '코': 'nose', '입': 'mouth', '귀': 'ears', '턱': 'chin'}
     for part, (bx, by) in static_pos.items():
         txt = f"{part}: {part_scores.get(key_map[part], 0):.1f}%"
         draw.rounded_rectangle([bx, by, bx + LABEL_W, by + LABEL_H],
-                                fill='white', radius=8)
-        draw.text((bx + LABEL_W // 2, by + LABEL_H // 2),
-                    txt, font=font_label, fill='black', anchor='mm')
-
-    # 9) 파일 저장 로직 주석 처리
-    # date_folder = datetime.now().strftime('%Y%m%d')
-    # out_dir = os.path.join('outputs', date_folder)
-    # os.makedirs(out_dir, exist_ok=True)
-    # filename = f"result_{datetime.now():%Y%m%d_%H%M%S}.png"
-    # path = os.path.join(out_dir, filename)
-    # image.save(path)
-    # logger.info(f"결과 이미지 저장됨: {path}")
+                                fill='white', radius=8, outline="gray")
+        safe_text(draw, txt, bx + LABEL_W // 2, by + LABEL_H // 2, font_label, 'black')
 
     return image
