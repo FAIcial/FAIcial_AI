@@ -121,6 +121,7 @@ def analyze():
         final_score = round(weighted_total, 2)
 
         logger.debug(f"일치율 + 대칭률 : {final_scores}")
+        logger.debug(f"최종 대칭 점수 : {final_score}")
 
         # 7. 결과 이미지 시각화
         result_image = generate_result_image(image, landmarks, final_score, final_scores)
@@ -140,7 +141,7 @@ def analyze():
         return jsonify({
             "parts_images": encoded_parts, # parts_images : 안면 부위 사진
             "final_socres": final_scores, # final_scores : 각 부위 최종 점수
-            "final_score": final_score, # final_score : 최종 안면 비대칭 점수
+            "final_score": final_score, # final_score : 최종 안면 대칭 점수
             "result_image": img_data # 최종 결과 사진
         })
 
