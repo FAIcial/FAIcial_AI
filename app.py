@@ -7,8 +7,11 @@ from analyzer.image_devide import get_face_parts
 from logger import logger
 from utils.image_utils import encode_image_to_base64
 from utils.visual_utils import draw_landmark_points, draw_specific_points  # 디버그 유틸 import
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)  # 전체 도메인 허용 (개발 환경에서만 권장)
+#CORS(app, origins=["http://localhost:5173"])
 
 # ──────────────────────────────────────────────────────────────────────────────
 # DEBUG LANDMARKS ENDPOINT
@@ -122,8 +125,8 @@ def analyze():
         logger.debug(f"일치율 + 대칭률 : {final_scores}")
         logger.debug(f"최종 대칭 점수 : {final_score}")
 
-        # 7. 결과 이미지 시각화
-        result_image = generate_result_image(image, landmarks, final_score, final_scores)
+        # 7. 결과 이미지 시각화, 픽셀 추출
+        result_image, distance_dict = generate_result_image(image, landmarks, final_score, final_scores)
 
         # 8. Base64 인코딩
         img_data = encode_image_to_base64(result_image)
@@ -135,7 +138,8 @@ def analyze():
             "parts_images": encoded_parts, # parts_images : 안면 부위 사진
             "final_socres": final_scores, # final_scores : 각 부위 최종 점수
             "final_score": final_score, # final_score : 최종 안면 대칭 점수
-            "result_image": img_data # 최종 결과 사진
+            "result_image": img_data, # 최종 결과 사진
+            "total_distance": distance_dict # 각 부위 차이 픽셀
         })
 
     except Exception as e:

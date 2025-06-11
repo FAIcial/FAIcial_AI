@@ -118,12 +118,15 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
 
     # 3) 해상도 기반 폰트 크기 동적 조절
     scale_factor = image.width / 800
+    
     title_size = int(40 * scale_factor)
+    message_size = int(34 * scale_factor)
     label_size = int(24 * scale_factor)
     face_size = int(15 * scale_factor)
 
     # 4) 폰트 크기 설정
     font_title = ImageFont.truetype(FONT_PATH, title_size)
+    font_message = ImageFont.truetype(FONT_PATH, message_size)
     font_label = ImageFont.truetype(FONT_PATH, label_size)
     font_face = ImageFont.truetype(FONT_PATH, int(face_size * 1.5))
 
@@ -179,18 +182,22 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
         draw_obj.text((x + dx + 1, y + dy + 1), text, font=font, fill='black', anchor=anchor)
         draw_obj.text((x + dx, y + dy), text, font=font, fill=fill, anchor=anchor)
     
-    safe_text(draw, '당신의 대칭률은', image_center_x, start_y + vertical_padding + title_size * 0.5, font_title, 'white')
-    safe_text(draw, f'{score:.2f}%!!', image_center_x, start_y + vertical_padding + title_size * 1.5, font_title, 'white')
-    safe_text(draw, message, image_center_x, start_y + vertical_padding + title_size * 2.5, font_face, 'white')
+    safe_text(draw, f'당신의 대칭률은 {score:.2f}%!!', image_center_x, start_y + vertical_padding + title_size * 0.5, font_title, 'white')
+    # safe_text(draw, f'{score:.2f}%!!', image_center_x, start_y + vertical_padding + title_size * 1.5, font_title, 'white')
+    safe_text(draw, message, image_center_x, start_y + vertical_padding + title_size * 2.5, font_message, 'white')
+
+    # 결과 저장용 딕셔너리
+    distance_dict = {}
 
     # 8) 거리 시각화
     highlights = [
-        (61,  'blue'), (291, 'blue'),
-        (133, 'blue'), (362, 'blue'),
-        (234, 'cyan'), (454, 'cyan'),
-        (98,  'red'),  (327, 'red'),
+        (61,  'blue', 'left_mouth'), (291, 'blue', 'right_mouth'), # 오른쪽, 왼쪽 입
+        (133, 'blue', 'left_eye'), (362, 'blue', 'right_eye'), # 오른쪽, 왼쪽 눈
+        (234, 'cyan', 'left_ear'), (454, 'cyan', 'right_ear'), # 오른쪽, 왼쪽 귀
+        (98,  'red', 'left_nose'),  (327, 'red', 'right_nose'),  # 오른쪽, 왼쪽 코
+        (172,  'red', 'left_chin'),  (397, 'red', 'right_chin'), # 오른쪽, 왼쪽 턱
     ]
-    for idx, color in highlights:
+    for idx, color, name in highlights:
         x_i, y_i = landmarks[idx]
         dist = abs(face_center_x - x_i)
         draw_dotted_line(draw, (x_i, y_i), (face_center_x, y_i), color=color)
@@ -202,10 +209,13 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
 
         safe_text(draw, f"{int(dist)}px", text_x, text_y, font_face, color)
         
+        # 거리 저장
+        distance_dict[name] = round(dist, 0)
+        
     # 9) 부위별 라벨
     LABEL_W, LABEL_H = 150, 50
     PADDING = 20
-    label_indices = {'눈': 33, '코': 1, '입': 13, '귀': 234, '턱' : 379}
+    label_indices = {'눈': 33, '코': 1, '입': 13, '귀': 234, '턱' : 397}
     static_pos = {}
     for part, idx in label_indices.items():
         x_pt, y_pt = landmarks[idx]
@@ -231,4 +241,4 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
                                 fill='white', radius=8)
         safe_text(draw, txt, bx + LABEL_W // 2, by + LABEL_H // 2, font_label, 'black')
 
-    return image
+    return image, distance_dict
