@@ -21,8 +21,8 @@ PADDING_RATIO_MAP = {
     'right_eye': {'top': 0.02, 'bottom': 0.02, 'left': 0.04, 'right': 0.04},
     'nose': {'top': 0.1, 'bottom': 0.03, 'left': 0.03, 'right': 0.03},
     'mouth': {'top': 0.05, 'bottom': 0.06, 'left': 0.04, 'right': 0.04},
-    'left_ear': {'top': 0.1, 'bottom': 0.03, 'left': 0.05, 'right': 0.00},
-    'right_ear': {'top': 0.1, 'bottom': 0.03, 'left': 0.00, 'right': 0.05},
+    'left_ear': {'top': 0.1, 'bottom': 0.08, 'left': 0.10, 'right': 0.00},
+    'right_ear': {'top': 0.1, 'bottom': 0.08, 'left': 0.00, 'right': 0.10},
     "left_chin": {'top': 0.12, 'bottom': 0.02, 'left': 0.10, 'right': 0.00},
     "right_chin": {'top': 0.12, 'bottom': 0.02, 'left': 0.00, 'right': 0.10},
 }
@@ -75,8 +75,7 @@ def compare_ssim_flipped_images(img1: Image.Image, img2: Image.Image) -> float:
     score, _ = ssim(arr1, arr2, full=True)
     return round(score * 100, 2)
 
-# === 코, 입 반으로 나눈 후 일치율 비교 함수 ===
-def compare_split_match(image: Image.Image) -> float:
+def compare_split_match(image: Image.Image) -> tuple[float, Image.Image, Image.Image]:
     width, height = image.size
     mid = width // 2
 
@@ -95,7 +94,8 @@ def compare_split_match(image: Image.Image) -> float:
     arr1 = np.array(left_half.convert("L"))
     arr2 = np.array(right_half_flipped.convert("L"))
     score, _ = ssim(arr1, arr2, full=True)
-    return round(score * 100, 2)
+
+    return round(score * 100, 2), left_half, right_half
 
 # 가중치에 따른 평균 도출
 def weighted_average(score_dict, weights):
@@ -108,13 +108,10 @@ def weighted_average(score_dict, weights):
                 total_weight += weight
         return round(total_weighted_score / total_weight, 2) if total_weight else None
 
-# 각 일치율 계산 함수
+# 일치율 계산 함수
 def compare_match_parts_from_images(parts: dict[str, Image.Image]) -> dict[str, float | None]:
-    
-    # 부위별 일치율 결과 저장
     results: dict[str, float | None] = {}
 
-    # 각 부위별 일치율 계산
     results["eyes"] = (
         compare_ssim_flipped_images(parts["left_eye"], parts["right_eye"])
         if "left_eye" in parts and "right_eye" in parts else None
@@ -125,16 +122,20 @@ def compare_match_parts_from_images(parts: dict[str, Image.Image]) -> dict[str, 
         if "left_ear" in parts and "right_ear" in parts else None
     )
 
-    results["nose"] = (
-        compare_split_match(parts["nose"])
-        if "nose" in parts else None
-    )
+    if "nose" in parts:
+        score, left_nose, right_nose = compare_split_match(parts["nose"])
+        results["nose"] = score
+        parts["left_nose"] = left_nose
+        parts["right_nose"] = right_nose
+        del parts["nose"]  # 원본 nose 이미지 삭제
 
-    results["mouth"] = (
-        compare_split_match(parts["mouth"])
-        if "mouth" in parts else None
-    )
-    
+    if "mouth" in parts:
+        score, left_mouth, right_mouth = compare_split_match(parts["mouth"])
+        results["mouth"] = score
+        parts["left_mouth"] = left_mouth
+        parts["right_mouth"] = right_mouth
+        del parts["mouth"]  # 원본 mouth 이미지 삭제
+
     results["chin"] = (
         compare_ssim_flipped_images(parts["left_chin"], parts["right_chin"])
         if "left_chin" in parts and "right_chin" in parts else None
