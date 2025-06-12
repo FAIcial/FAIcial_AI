@@ -1,8 +1,9 @@
 import os
 import requests
+import math
 from datetime import datetime
 from math import hypot
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 from logger import logger
 from utils.face_utils import estimate_position
 
@@ -16,11 +17,11 @@ if not os.path.exists(FONT_PATH):
         f.write(resp.content)
     logger.info("폰트 다운로드 완료: NotoSansKR-Regular.ttf")
 
-
 def draw_dotted_line(draw, start, end, color="blue", width=2, dash_length=10):
     total = hypot(end[0] - start[0], end[1] - start[1])
     num = int(total // dash_length)
     if num < 1:
+        draw.line([start, end], fill=color, width=width)
         return
     dx = (end[0] - start[0]) / num
     dy = (end[1] - start[1]) / num
@@ -31,6 +32,14 @@ def draw_dotted_line(draw, start, end, color="blue", width=2, dash_length=10):
         y2 = start[1] + dy * (i + 1)
         draw.line([(x1, y1), (x2, y2)], fill=color, width=width)
 
+def project_point_to_line(px, py, pt1, pt2):
+    ux, uy = pt2[0] - pt1[0], pt2[1] - pt1[1]
+    vx, vy = px - pt1[0], py - pt1[1]
+    denom = ux*ux + uy*uy
+    if denom == 0:
+        return pt1
+    t = (ux*vx + uy*vy) / denom
+    return (pt1[0] + t*ux, pt1[1] + t*uy)
 
 def crop_to_face_center_with_zoom(
     image: Image.Image,
@@ -75,9 +84,7 @@ def crop_to_face_center_with_zoom(
         needed.append(occ_scale)
 
     scale = max(1.0, *needed)
-    
-    # 추가로 확대 상한선 제한
-    scale = min(scale, 1.25)  # 1.25배 이상 확대 금지
+    scale = min(scale, 1.25)  # 최대 1.25배 확대 제한
 
     # 이미지 및 랜드마크 확대
     new_w, new_h = int(orig_w * scale), int(orig_h * scale)
@@ -85,19 +92,16 @@ def crop_to_face_center_with_zoom(
     landmarks = [(x * scale, y * scale) for x, y in landmarks]
     face_cx *= scale
     face_cy *= scale
-    
-    # 크롭 크기를 새 이미지보다 크게 만들지 않도록 보정
+
     crop_w = min(crop_w, new_w)
     crop_h = min(crop_h, new_h)
 
-    # 크롭 박스 좌상단 계산
     left = max(0, min(int(face_cx - crop_w * h_ratio), new_w - crop_w))
     top  = max(0, min(int(face_cy - crop_h * v_ratio), new_h - crop_h))
 
     cropped = image.crop((left, top, left + crop_w, top + crop_h))
     new_landmarks = [(x - left, y - top) for x, y in landmarks]
     return cropped, new_landmarks
-
 
 def generate_result_image(image: Image.Image, landmarks, score, part_scores):
     logger.debug("결과 이미지 시각화 시작")
@@ -112,35 +116,46 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
 
     # 2) 고정 해상도 리사이즈
     STANDARD_W, STANDARD_H = 800, 1000
-    scale = STANDARD_W / image.width
+    scale_img = STANDARD_W / image.width
     image = image.resize((STANDARD_W, STANDARD_H), Image.LANCZOS)
-    landmarks = [(x * scale, y * scale) for x, y in landmarks]
+    landmarks = [(x * scale_img, y * scale_img) for x, y in landmarks]
 
     # 3) 해상도 기반 폰트 크기 동적 조절
     scale_factor = image.width / 800
-    
     title_size = int(40 * scale_factor)
     message_size = int(34 * scale_factor)
     label_size = int(24 * scale_factor)
     face_size = int(15 * scale_factor)
 
-    # 4) 폰트 크기 설정
+    # 4) 폰트 설정
     font_title = ImageFont.truetype(FONT_PATH, title_size)
     font_message = ImageFont.truetype(FONT_PATH, message_size)
     font_label = ImageFont.truetype(FONT_PATH, label_size)
     font_face = ImageFont.truetype(FONT_PATH, int(face_size * 1.5))
 
-    # 5) RGBA
+    # 5) RGBA 모드
     if image.mode != 'RGBA':
         image = image.convert('RGBA')
     w, h = image.size
 
-    # 6) 얼굴 기준선 X
-    face_center_x, _ = estimate_position(landmarks, [1, 2, 168, 9, 94, 152])
-    draw = ImageDraw.Draw(image)
-    draw.line([(face_center_x, 0), (face_center_x, h)], fill='yellow', width=2)
+    # 6) 눈 좌표로 얼굴 대칭축(수직선) 벡터 계산
+    x1, y1 = landmarks[33]   # 왼쪽 눈 외곽
+    x2, y2 = landmarks[263]  # 오른쪽 눈 외곽
+    ex, ey = x2 - x1, y2 - y1
+    norm = math.hypot(ex, ey) or 1
+    ux, uy = -ey / norm, ex / norm  # 수직 단위벡터
 
-    # 7) 상단 텍스트
+    # 7) 기준선 점(pt1, pt2) 계산
+    L = max(w, h) * 2
+    cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
+    pt1 = (cx - ux * L, cy - uy * L)
+    pt2 = (cx + ux * L, cy + uy * L)
+
+    # 8) 기준선 그리기
+    draw = ImageDraw.Draw(image)
+    draw.line([pt1, pt2], fill='yellow', width=2)
+
+    # 9) 상단 메시지 박스
     if score >= 90:
         message = "~(^ w ^~) 이 정도면 대칭의 신이에요! (~ ^ w ^)~"
     elif score >= 75:
@@ -150,7 +165,7 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
     else:
         message = "비대칭? 그건 개성이라고 불러요 :)"
 
-    image_center_x = image.width // 2
+    image_center_x = w // 2
     vertical_padding = int(20 * scale_factor)
     box_height = int(title_size * 3 + vertical_padding * 2)
     start_y = vertical_padding
@@ -162,60 +177,48 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
     draw = ImageDraw.Draw(image)
 
     def safe_text(draw_obj, text, x, y, font, fill, anchor='mm'):
-        # 텍스트 크기 계산
         bbox = draw_obj.textbbox((x, y), text, font=font, anchor=anchor)
         left, top, right, bottom = bbox
-
-        # 좌표 보정 (이미지를 벗어나지 않도록)
-        dx, dy = 0, 0
+        dx = dy = 0
         if top < 0:
             dy = -top + 5
-        elif bottom > image.height:
-            dy = image.height - bottom - 5
-
+        elif bottom > h:
+            dy = h - bottom - 5
         if left < 0:
             dx = -left + 5
-        elif right > image.width:
-            dx = image.width - right - 5
-
-        # 보정된 위치에 그림자와 텍스트 출력
+        elif right > w:
+            dx = w - right - 5
         draw_obj.text((x + dx + 1, y + dy + 1), text, font=font, fill='black', anchor=anchor)
         draw_obj.text((x + dx, y + dy), text, font=font, fill=fill, anchor=anchor)
-    
+
     safe_text(draw, f'당신의 대칭률은 {score:.2f}%!!', image_center_x, start_y + vertical_padding + title_size * 0.5, font_title, 'white')
-    # safe_text(draw, f'{score:.2f}%!!', image_center_x, start_y + vertical_padding + title_size * 1.5, font_title, 'white')
     safe_text(draw, message, image_center_x, start_y + vertical_padding + title_size * 2.5, font_message, 'white')
 
-    # 결과 저장용 딕셔너리
-    distance_dict = {}
-
-    # 8) 거리 시각화
+    # 10) 거리 시각화 (기울어진 대칭축에 대한 최단 거리)
     highlights = [
-        (61,  'blue', 'left_mouth'), (291, 'blue', 'right_mouth'), # 오른쪽, 왼쪽 입
-        (133, 'blue', 'left_eye'), (362, 'blue', 'right_eye'), # 오른쪽, 왼쪽 눈
-        (234, 'cyan', 'left_ear'), (454, 'cyan', 'right_ear'), # 오른쪽, 왼쪽 귀
-        (98,  'red', 'left_nose'),  (327, 'red', 'right_nose'),  # 오른쪽, 왼쪽 코
-        (172,  'red', 'left_chin'),  (397, 'red', 'right_chin'), # 오른쪽, 왼쪽 턱
+        (61,  'blue', 'left_mouth'), (291, 'blue', 'right_mouth'),
+        (133, 'blue', 'left_eye'),   (362, 'blue', 'right_eye'),
+        (234, 'cyan', 'left_ear'),   (454, 'cyan', 'right_ear'),
+        (98,  'red', 'left_nose'),   (327, 'red', 'right_nose'),
+        (172, 'red', 'left_chin'),   (397, 'red', 'right_chin'),
     ]
+    distance_dict = {}
     for idx, color, name in highlights:
         x_i, y_i = landmarks[idx]
-        dist = abs(face_center_x - x_i)
-        draw_dotted_line(draw, (x_i, y_i), (face_center_x, y_i), color=color)
+        proj = project_point_to_line(x_i, y_i, pt1, pt2)
+        draw_dotted_line(draw, (x_i, y_i), proj, color=color)
 
-        # 텍스트 좌표 보정
-        text_x = (x_i + face_center_x) // 2
-        raw_text_y = y_i - face_size // 2
-        text_y = max(0, min(raw_text_y, h - 1))  # 이미지 범위로 제한
+        text_x = int((x_i + proj[0]) / 2)
+        text_y = int((y_i + proj[1]) / 2)
+        safe_text(draw, f"{int(hypot(x_i - proj[0], y_i - proj[1]))}px",
+                  text_x, text_y, font_face, color)
 
-        safe_text(draw, f"{int(dist)}px", text_x, text_y, font_face, color)
-        
-        # 거리 저장
-        distance_dict[name] = round(dist, 0)
-        
-    # 9) 부위별 라벨
+        distance_dict[name] = round(hypot(x_i - proj[0], y_i - proj[1]), 0)
+
+    # 11) 부위별 라벨
     LABEL_W, LABEL_H = 150, 50
     PADDING = 20
-    label_indices = {'눈': 33, '코': 1, '입': 13, '귀': 234, '턱' : 397}
+    label_indices = {'눈': 33, '코': 1, '입': 13, '귀': 234, '턱': 397}
     static_pos = {}
     for part, idx in label_indices.items():
         x_pt, y_pt = landmarks[idx]
@@ -224,21 +227,16 @@ def generate_result_image(image: Image.Image, landmarks, score, part_scores):
         by = max(PADDING, min(by, h - LABEL_H - PADDING))
         static_pos[part] = (bx, by)
 
-    # 그림자 위치 (조금 아래, 오른쪽)
     shadow_offset = 2
-    shadow_color = (0, 0, 0, 100)  # 반투명 검정색
-
+    shadow_color = (0, 0, 0, 100)
     key_map = {'눈': 'eyes', '코': 'nose', '입': 'mouth', '귀': 'ears', '턱': 'chin'}
+
     for part, (bx, by) in static_pos.items():
         txt = f"{part}: {part_scores.get(key_map[part], 0):.1f}%"
-        
-        # 그림자 먼저 그림
         draw.rounded_rectangle(
             [bx + shadow_offset, by + shadow_offset, bx + LABEL_W + shadow_offset, by + LABEL_H + shadow_offset],
             fill=shadow_color, radius=8)
-
-        draw.rounded_rectangle([bx, by, bx + LABEL_W, by + LABEL_H],
-                                fill='white', radius=8)
+        draw.rounded_rectangle([bx, by, bx + LABEL_W, by + LABEL_H], fill='white', radius=8)
         safe_text(draw, txt, bx + LABEL_W // 2, by + LABEL_H // 2, font_label, 'black')
 
     return image, distance_dict
