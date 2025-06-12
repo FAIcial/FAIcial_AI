@@ -1,0 +1,9 @@
+flask
+opencv-python
+mediapipe
+matplotlib
+numpy
+Pillow
+requests
+scikit-image
+flask-cors
