@@ -5,3 +5,5 @@ matplotlib
 numpy
 Pillow
 requests
+scikit-image
+flask-cors
