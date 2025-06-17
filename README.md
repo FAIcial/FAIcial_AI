@@ -135,9 +135,9 @@ export FLASK_ENV=development    # 개발 모드 활성화 (선택)
 - [x] `utils/image_utils.py`로 Base64 인코딩 분리
 - [x] `utils/face_utils.py`로 랜드마크 평균 위치 계산 분리
 - [x] 테스트 및 Postman Visualizer 검증
-- [ ] 단위 테스트 추가
-- [ ] Docker 환경 설정
-- [ ] CI/CD 파이프라인 구축
+- [x] 단위 테스트 추가
+- [x] Docker 환경 설정
+- [x] CI/CD 파이프라인 구축
 
 ---
 
